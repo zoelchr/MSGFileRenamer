@@ -4,7 +4,11 @@
 # Installiere sie mit: pip install -r requirements.txt
 import os
 import shutil
-from modules.msg_handling import get_sender_msg_file, parse_sender_msg_file, create_log_file, log_entry, load_known_senders
+from modules.msg_handling import get_sender_msg_file, parse_sender_msg_file, create_log_file, log_entry, load_known_senders, get_date_sent_msg_file, convert_to_utc_naive, format_datetime
+
+
+import pandas as pd
+from openpyxl import load_workbook
 
 def delete_directory_contents(directory_path):
     """
@@ -75,8 +79,14 @@ if __name__ == '__main__':
 
     LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders.csv'
 
+    # Beispiel für das gewünschte Format
+    format_string = "%Y%m%d-%Huhr%M"  # Beispiel: JJJJMMTT-HHMM
+
     # Zähler für die fortlaufende Nummer
     counter = 1
+
+    # Zeitstempel initialisieren
+    datetime_stamp = ""
 
     # Logfile erstellen
     log_file_path = create_log_file(BASE_LOG_NAME, LOG_DIRECTORY)
@@ -123,6 +133,14 @@ if __name__ == '__main__':
                 else:
                     parsed_sender_email["contains_sender_email"] = True  # Wenn eine Email gefunden wurde
 
+                datetime_stamp = get_date_sent_msg_file(os.path.join(root, file))
+                datetime_stamp = convert_to_utc_naive(datetime_stamp)  # Sicherstellen, dass der Zeitstempel zeitzonenunabhängig ist
+                print(f"\tEtrahierter Versandzeitpunkt: {datetime_stamp}")  # Ausgabe des analysierten Datums
+
+                # Im Hauptteil des Codes vor dem Logeintrag
+                formatted_timestamp = format_datetime(datetime_stamp, format_string)  # Formatieren des Zeitstempels
+                print(f"\tFormatierter Versandzeitpunkt: {formatted_timestamp}")
+
                 # Logeintrag erstellen
                 entry = {
                     "Fortlaufende Nummer": counter,
@@ -130,7 +148,9 @@ if __name__ == '__main__':
                     "Filename": file,
                     "Sendername": parsed_sender_email["sender_name"],
                     "Senderemail": parsed_sender_email["sender_email"],
-                    "Contains Senderemail": parsed_sender_email["contains_sender_email"]
+                    "Contains Senderemail": parsed_sender_email["contains_sender_email"],
+                    "Timestamp": datetime_stamp,
+                    "Formatierter Timestamp": formatted_timestamp
                 }
 
                 # Eintrag ins Logfile hinzufügen

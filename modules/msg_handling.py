@@ -81,7 +81,15 @@ def load_known_senders(file_path):
     """
     return pd.read_csv(file_path)
 
-
+def get_date_sent_msg_file(file_path):
+    # Abrufen des Datums aus einem MSG-File
+    try:
+        msg = extract_msg.Message(file_path)
+        return msg.date if msg.date else "Unbekannt"  # Rückgabe eines Standardwerts, wenn kein Datum vorhanden ist
+    except FileNotFoundError:
+        return "Datei nicht gefunden"
+    except Exception as e:
+        return f"Fehler beim Auslesen des Datums: {str(e)}"
 
 def create_log_file(base_name, directory):
     """
@@ -99,7 +107,7 @@ def create_log_file(base_name, directory):
     log_file_path = os.path.join(directory, log_file_name)
 
     # Leeres DataFrame mit den gewünschten Spalten erstellen
-    df = pd.DataFrame(columns=["Fortlaufende Nummer", "Verzeichnisname", "Filename", "Sendername", "Senderemail", "Contains Senderemail"])
+    df = pd.DataFrame(columns=["Fortlaufende Nummer", "Verzeichnisname", "Filename", "Sendername", "Senderemail", "Contains Senderemail", "Timestamp", "Formatierter Timestamp"])
 
     try:
         df.to_excel(log_file_path, index=False)
@@ -121,7 +129,47 @@ def log_entry(log_file_path, entry):
     # Erstellen eines DataFrames aus dem Eintrag
     new_entry_df = pd.DataFrame([entry])
 
-    # Zusammenführen des bestehenden DataFrames mit dem neuen Eintrag
-    df = pd.concat([df, new_entry_df], ignore_index=True)
+    # Überprüfen, ob new_entry_df leer ist oder nur NA-Werte enthält
+    if not new_entry_df.empty and not new_entry_df.isnull().all(axis=1).any():
+        # Logdatei laden oder erstellen
+        if os.path.exists(log_file_path):
+            df = pd.read_excel(log_file_path)
+            # Nur nicht-leere DataFrames zusammenführen
+            if not df.empty:
+                df = pd.concat([df, new_entry_df], ignore_index=True)  # Eintrag hinzufügen
+            else:
+                df = new_entry_df  # Neue Logdatei erstellen, wenn df leer ist
+        else:
+            df = new_entry_df  # Neue Logdatei erstellen
 
-    df.to_excel(log_file_path, index=False)
+        # Speichern des aktualisierten DataFrames in die Logdatei
+        df.to_excel(log_file_path, index=False)
+
+def convert_to_utc_naive(datetime_stamp):
+    """
+    Konvertiert einen Zeitstempel in ein UTC-naives Datetime-Objekt.
+
+    Parameter:
+    datetime_stamp (datetime): Der Zeitstempel, der konvertiert werden soll.
+
+    Gibt:
+    datetime: Ein UTC-naives Datetime-Objekt.
+    """
+    if datetime_stamp.tzinfo is not None:
+        return datetime_stamp.replace(tzinfo=None)  # Entfernen der Zeitzone
+    return datetime_stamp
+
+def format_datetime(datetime_stamp, format_string):
+    """
+    Formatiert einen Zeitstempel in das angegebene Format.
+
+    Parameter:
+    datetime_stamp (datetime): Der Zeitstempel, der formatiert werden soll.
+    format_string (str): Das gewünschte Format für den Zeitstempel.
+
+    Gibt:
+    str: Der formatierte Zeitstempel als String.
+    """
+    if isinstance(datetime_stamp, datetime):
+        return datetime_stamp.strftime(format_string)
+    raise ValueError("Ungültiger Zeitstempel.")
