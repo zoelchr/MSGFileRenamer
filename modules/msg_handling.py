@@ -6,18 +6,27 @@ Es bietet Routinen, um verschiedene Informationen wie Absender, Empfänger,
 Betreff und andere relevante Daten zu extrahieren.
 
 Funktionen:
-- get_sender_email_msg_file(file_path): Gibt die E-Mail-Adresse des Absenders zurück.
+- get_sender_msg_file(file_path): Gibt die E-Mail-Adresse des Absenders zurück.
+- parse_sender_msg_file(sender: str): Analysiert den Sender-String und extrahiert Name und E-Mail.
 - get_subject_msg_file(file_path): Gibt den Betreff der Nachricht zurück.
+- load_known_senders(file_path): Lädt bekannte Sender aus einer CSV-Datei.
 - get_date_sent_msg_file(file_path): Gibt das Datum der gesendeten Nachricht zurück.
+- create_log_file(base_name, directory): Erstellt ein Logfile im Excel-Format.
+- log_entry(log_file_path, entry): Fügt einen neuen Eintrag in das Logfile hinzu.
+- convert_to_utc_naive(datetime_stamp): Konvertiert einen Zeitstempel in ein UTC-naives Datetime-Objekt.
+- format_datetime(datetime_stamp, format_string): Formatiert einen Zeitstempel in das angegebene Format.
+- custom_sanitize_text(encoded_textstring): Bereinigt einen Textstring von unerwünschten Zeichen.
+- truncate_filename_if_needed(file_path, max_length, truncation_marker): Kürzt den Dateinamen, wenn nötig.
 
 Verwendung:
 Importiere die Funktionen aus diesem Modul in deinem Hauptprogramm oder anderen Modulen,
 um auf die Metadaten von MSG-Dateien zuzugreifen.
 
 Beispiel:
-    from modules.msg_handling import get_sender_email
-    sender_email = get_sender_email('example.msg')
+    from modules.msg_handling import get_sender_msg_file
+    sender_email = get_sender_msg_file('example.msg')
 """
+
 import extract_msg
 import re
 import os
@@ -26,7 +35,15 @@ from datetime import datetime
 
 
 def get_sender_msg_file(file_path):
-    # Abrufen des Senders aus einem MSG-File
+    """
+    Abrufen des Senders aus einem MSG-File.
+
+    Parameter:
+    file_path (str): Der Pfad zur MSG-Datei.
+
+    Gibt:
+    str: Die E-Mail-Adresse des Absenders oder "Unbekannt", wenn kein Sender vorhanden ist.
+    """
     try:
         msg = extract_msg.Message(file_path)
         return msg.sender if msg.sender else "Unbekannt"  # Rückgabe eines Standardwerts, wenn kein Sender vorhanden ist
@@ -68,6 +85,25 @@ def parse_sender_msg_file(sender: str):
         "contains_sender_email": contains_sender_email
     }
 
+def get_subject_msg_file(file_path):
+    """
+    Gibt den Betreff der Nachricht aus einer MSG-Datei zurück.
+
+    Parameter:
+    file_path (str): Der Pfad zur MSG-Datei.
+
+    Gibt:
+    str: Der Betreff der Nachricht oder "Unbekannt", wenn kein Betreff vorhanden ist.
+    """
+    try:
+        msg = extract_msg.Message(file_path)
+        return msg.subject if msg.subject else "Unbekannt"  # Rückgabe eines Standardwerts, wenn kein Betreff vorhanden ist
+    except FileNotFoundError:
+        return "Datei nicht gefunden"
+    except Exception as e:
+        return f"Fehler beim Auslesen des Betreffs: {str(e)}"
+
+
 # Funktion zum Laden der bekannten Sender
 def load_known_senders(file_path):
     """
@@ -82,7 +118,15 @@ def load_known_senders(file_path):
     return pd.read_csv(file_path)
 
 def get_date_sent_msg_file(file_path):
-    # Abrufen des Datums aus einem MSG-File
+    """
+    Gibt das Datum der gesendeten Nachricht aus einer MSG-Datei zurück.
+
+    Parameter:
+    file_path (str): Der Pfad zur MSG-Datei.
+
+    Gibt:
+    str: Das Datum der gesendeten Nachricht oder "Unbekannt", wenn kein Datum vorhanden ist.
+    """
     try:
         msg = extract_msg.Message(file_path)
         return msg.date if msg.date else "Unbekannt"  # Rückgabe eines Standardwerts, wenn kein Datum vorhanden ist
@@ -107,7 +151,7 @@ def create_log_file(base_name, directory):
     log_file_path = os.path.join(directory, log_file_name)
 
     # Leeres DataFrame mit den gewünschten Spalten erstellen
-    df = pd.DataFrame(columns=["Fortlaufende Nummer", "Verzeichnisname", "Filename", "Sendername", "Senderemail", "Contains Senderemail", "Timestamp", "Formatierter Timestamp"])
+    df = pd.DataFrame(columns=["Fortlaufende Nummer", "Verzeichnisname", "Filename", "Sendername", "Senderemail", "Contains Senderemail", "Timestamp", "Formatierter Timestamp", "Betreff", "Bereinigter Betreff", "Neuer Filename", "Neuer gekürzter Fielname", "Neuer Dateipfad"])
 
     try:
         df.to_excel(log_file_path, index=False)
@@ -173,3 +217,108 @@ def format_datetime(datetime_stamp, format_string):
     if isinstance(datetime_stamp, datetime):
         return datetime_stamp.strftime(format_string)
     raise ValueError("Ungültiger Zeitstempel.")
+
+
+def custom_sanitize_text(encoded_textstring):
+    """
+    Bereinigt einen Textstring, indem unerwünschte Zeichen ersetzt und Formatierungen angepasst werden.
+
+    Diese Funktion führt mehrere Schritte zur Bereinigung des Eingabetextes durch:
+    1. Ersetzt mehrere aufeinanderfolgende Leerzeichen durch ein einzelnes Leerzeichen.
+    2. Entfernt Leerzeichen am Ende des Textes.
+    3. Ersetzt spezifische unerwünschte Zeichenfolgen durch definierte Alternativen.
+    4. Ersetzt unerwünschte Zeichen durch sichere Alternativen, um sicherzustellen, dass der Text als Dateiname verwendet werden kann.
+
+    Parameter:
+    encoded_textstring (str): Der ursprüngliche Textstring, der bereinigt werden soll.
+
+    Gibt:
+    str: Der bereinigte Textstring, der als gültiger Dateiname verwendet werden kann,
+         wobei unerwünschte Zeichen entfernt oder ersetzt wurden.
+    """
+    # Ersetze mehrere aufeinanderfolgende Leerzeichen durch ein einzelnes Leerzeichen
+    encoded_textstring = re.sub(r'\s+', ' ', encoded_textstring)
+    # Entferne Leerzeichen am Ende
+    encoded_textstring = encoded_textstring.rstrip()
+
+    # Ersetze spezielle Zeichenfolgen
+    encoded_textstring = encoded_textstring.replace("_-_", "-")
+    encoded_textstring = encoded_textstring.replace(" - ", "-")
+    encoded_textstring = encoded_textstring.replace("._", "_")
+    encoded_textstring = encoded_textstring.replace("_.", "_")
+    encoded_textstring = encoded_textstring.replace(" .", "_")
+    encoded_textstring = encoded_textstring.replace(". ", "_")
+    encoded_textstring = encoded_textstring.replace(" / ", "_")
+    encoded_textstring = encoded_textstring.replace(" & ", "_")
+    encoded_textstring = encoded_textstring.replace("; ", "_")
+    encoded_textstring = encoded_textstring.replace("/ ", "_")
+    encoded_textstring = encoded_textstring.replace(" | ", "_")
+
+    replacements = {
+        " ": "_",
+        "#": "_",
+        "%": "_",
+        "&": "_",
+        "*": "-",
+        "{": "-",
+        "}": "-",
+        "\\": "-",
+        ":": "",
+        "<": "-",
+        ">": "-",
+        "?": "-",
+        "/": "_",
+        "|": "_",
+        "\"": "",
+        "ä": "ae",
+        "Ä": "Ae",
+        "ö": "oe",
+        "Ö": "Oe",
+        "ü": "ue",
+        "Ü": "Ue",
+        "ß": "ss",
+        "é": "e" ,
+        ",": "" ,
+        "!": "" ,
+        "'": "_",
+        ";": "_",
+        "“": "",
+        "„": ""
+    }
+
+    for old_char, new_char in replacements.items():
+        encoded_textstring = encoded_textstring.replace(old_char, new_char)
+
+    return encoded_textstring
+
+def truncate_filename_if_needed(file_path, max_length, truncation_marker):
+    """
+    Kürzt den Dateinamen, wenn der gesamte Pfad die maximal zulässige Länge überschreitet.
+
+    Diese Funktion überprüft die Länge des angegebenen Dateipfads und vergleicht sie mit der maximalen
+    zulässigen Länge. Wenn der Pfad diese Länge überschreitet, wird der Dateiname so gekürzt, dass er
+    zusammen mit dem Verzeichnispfad die maximale Länge nicht überschreitet. Am Ende des gekürzten
+    Dateinamens wird ein Truncation Marker hinzugefügt, um anzuzeigen, dass der Name gekürzt wurde.
+
+    Parameter:
+    file_path (str): Der vollständige Dateipfad, der überprüft und möglicherweise gekürzt werden soll.
+    max_length (int): Die maximal zulässige Länge des gesamten Dateipfads.
+    truncation_marker (str): Die Zeichenkette, die verwendet wird, um das Kürzen anzuzeigen (z.B. "<>").
+
+    Gibt:
+    str: Der möglicherweise gekürzte Dateipfad, der die maximal zulässige Länge nicht überschreitet.
+    """
+    if len(file_path) > max_length:
+        # Berechne die maximale Länge für den Dateinamen
+        path_length = len(os.path.dirname(file_path))
+        max_filename_length = max_length - path_length - len(truncation_marker) - 1  # -1 für den Schrägstrich
+
+        # Extrahiere den Dateinamen
+        filename = os.path.basename(file_path)
+
+        if len(filename) > max_filename_length:
+            # Kürze den Dateinamen und füge den Truncation Marker hinzu
+            truncated_filename = filename[:max_filename_length] + truncation_marker
+            return os.path.join(os.path.dirname(file_path), truncated_filename)
+
+    return file_path

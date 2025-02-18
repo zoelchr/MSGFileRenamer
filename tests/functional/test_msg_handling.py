@@ -4,8 +4,7 @@
 # Installiere sie mit: pip install -r requirements.txt
 import os
 import shutil
-from modules.msg_handling import get_sender_msg_file, parse_sender_msg_file, create_log_file, log_entry, load_known_senders, get_date_sent_msg_file, convert_to_utc_naive, format_datetime
-
+from modules.msg_handling import get_sender_msg_file, parse_sender_msg_file, create_log_file, log_entry, load_known_senders, get_date_sent_msg_file, convert_to_utc_naive, format_datetime, get_subject_msg_file, custom_sanitize_text, truncate_filename_if_needed
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -74,6 +73,9 @@ if __name__ == '__main__':
     SOURCE_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\data\sample_files\testset-long'
     TARGET_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\tests\functional\testdir'
 
+    # Maximal zulässige Pfadlänge für Windows 11
+    max_path_length = 260
+
     LOG_DIRECTORY = r'D:\Dev\pycharm\MSGFileRenamer\logs'
     BASE_LOG_NAME = 'msg_log'
 
@@ -135,11 +137,31 @@ if __name__ == '__main__':
 
                 datetime_stamp = get_date_sent_msg_file(os.path.join(root, file))
                 datetime_stamp = convert_to_utc_naive(datetime_stamp)  # Sicherstellen, dass der Zeitstempel zeitzonenunabhängig ist
-                print(f"\tEtrahierter Versandzeitpunkt: {datetime_stamp}")  # Ausgabe des analysierten Datums
+                print(f"\tExtrahierter Versandzeitpunkt: {datetime_stamp}")  # Ausgabe des analysierten Datums
 
                 # Im Hauptteil des Codes vor dem Logeintrag
                 formatted_timestamp = format_datetime(datetime_stamp, format_string)  # Formatieren des Zeitstempels
                 print(f"\tFormatierter Versandzeitpunkt: {formatted_timestamp}")
+
+                # Betreff auslesen
+                subject = get_subject_msg_file(file_path)
+                print(f"\tExtrahierter Betreff: {subject}")
+
+                # Betreff bereinigen
+                sanitized_subject = custom_sanitize_text(subject)
+                print(f"\tBereinigter Betreff: {sanitized_subject}")
+
+                # Neuen Namen der Datei festlegen
+                new_filename = f"{formatted_timestamp}_{parsed_sender_email['sender_email']}_{sanitized_subject}.msg"  # Beispiel für den neuen Dateinamen
+                new_file_path = os.path.join(root, new_filename)
+                print(f"\tNeuer Dateiname: {new_filename}")
+
+                # Kürzen des Dateinamens, falls nötig
+                new_truncated_path = truncate_filename_if_needed(new_file_path, max_path_length, "<>.msg")
+
+                # Gekürzter Dateiname ohne Pfad
+                new_truncated_filename = os.path.basename(new_truncated_path)
+                print(f"\tNeuer gekürzter Dateiname: {new_truncated_filename}")
 
                 # Logeintrag erstellen
                 entry = {
@@ -150,7 +172,12 @@ if __name__ == '__main__':
                     "Senderemail": parsed_sender_email["sender_email"],
                     "Contains Senderemail": parsed_sender_email["contains_sender_email"],
                     "Timestamp": datetime_stamp,
-                    "Formatierter Timestamp": formatted_timestamp
+                    "Formatierter Timestamp": formatted_timestamp,
+                    "Betreff": subject,
+                    "Bereinigter Betreff": sanitized_subject,
+                    "Neuer Filename": new_filename,
+                    "Neuer gekürzter Fielname": new_truncated_path,
+                    "Neuer Dateipfad": new_file_path
                 }
 
                 # Eintrag ins Logfile hinzufügen
