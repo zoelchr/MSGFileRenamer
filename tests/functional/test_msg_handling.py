@@ -107,7 +107,9 @@ if __name__ == '__main__':
     LOG_DIRECTORY = r'D:\Dev\pycharm\MSGFileRenamer\logs'
     BASE_LOG_NAME = 'msg_log'
 
-    LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders.csv'
+    # LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders.csv'
+    # Liste der bekannten Sender
+    LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders_private.csv'
 
     # Beispiel für das gewünschte Format für Zeitstempel
     format_string = "%Y%m%d-%Huhr%M"  # Beispiel: JJJJMMTT-HHMM
