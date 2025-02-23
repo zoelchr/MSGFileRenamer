@@ -128,8 +128,8 @@ def get_date_sent_msg_file(file_path):
     str: Das Datum der gesendeten Nachricht oder "Unbekannt", wenn kein Datum vorhanden ist.
     """
     try:
-        msg = extract_msg.Message(file_path)
-        return msg.date if msg.date else "Unbekannt"  # Rückgabe eines Standardwerts, wenn kein Datum vorhanden ist
+        with extract_msg.Message(file_path) as msg:  # Hier wird die Datei geöffnet
+            return msg.date if msg.date else "Unbekannt"  # Rückgabe eines Standardwerts, wenn kein Datum vorhanden ist
     except FileNotFoundError:
         return "Datei nicht gefunden"
     except Exception as e:
@@ -322,3 +322,5 @@ def truncate_filename_if_needed(file_path, max_length, truncation_marker):
             return os.path.join(os.path.dirname(file_path), truncated_filename)
 
     return file_path
+
+

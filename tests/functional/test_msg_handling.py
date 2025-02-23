@@ -18,9 +18,7 @@ Führen Sie dieses Skript aus, um alle Tests durchzuführen und die Ergebnisse z
 Beispiel:
     python -m unittest test_msg_handling.py
 """
-
 import os
-import shutil
 from modules.msg_handling import (
     get_sender_msg_file,
     parse_sender_msg_file,
@@ -34,67 +32,10 @@ from modules.msg_handling import (
     custom_sanitize_text,
     truncate_filename_if_needed
 )
-
-import pandas as pd
-from openpyxl import load_workbook
-
-def delete_directory_contents(directory_path):
-    """
-    Löscht den gesamten Inhalt des angegebenen Verzeichnisses.
-
-    Parameter:
-    directory_path (str): Der Pfad des Verzeichnisses, dessen Inhalt gelöscht werden soll.
-
-    Gibt:
-    str: Eine Bestätigung, dass der Inhalt erfolgreich gelöscht wurde.
-
-    Wirft:
-    OSError: Wenn das Löschen des Inhalts nicht erfolgreich ist.
-    """
-    if not os.path.isdir(directory_path):
-        raise OSError(f"{directory_path} ist kein gültiges Verzeichnis.")
-
-    try:
-        for item in os.listdir(directory_path):
-            item_path = os.path.join(directory_path, item)
-            if os.path.isfile(item_path):
-                os.remove(item_path)  # Löscht die Datei
-            else:
-                shutil.rmtree(item_path)  # Löscht das Verzeichnis rekursiv
-        return "Inhalt erfolgreich gelöscht."
-    except Exception as e:
-        raise OSError(f"Fehler beim Löschen des Inhalts: {e}")
-
-def copy_directory_contents(source_directory_path, target_directory_path):
-    """
-    Kopiert den gesamten Inhalt des angegebenen Quellverzeichnisses in das Zielverzeichnis.
-
-    Parameter:
-    source_directory_path (str): Der Pfad des Quellverzeichnisses.
-    target_directory_path (str): Der Pfad des Zielverzeichnisses.
-
-    Gibt:
-    str: Eine Bestätigung, dass der Inhalt erfolgreich kopiert wurde.
-
-    Wirft:
-    OSError: Wenn das Kopieren des Inhalts nicht erfolgreich ist.
-    """
-    if not os.path.isdir(source_directory_path):
-        raise OSError(f"{source_directory_path} ist kein gültiges Quellverzeichnis.")
-
-    os.makedirs(target_directory_path, exist_ok=True)  # Erstellt das Zielverzeichnis, falls es nicht existiert
-
-    try:
-        for item in os.listdir(source_directory_path):
-            s = os.path.join(source_directory_path, item)
-            d = os.path.join(target_directory_path, item)
-            if os.path.isdir(s):
-                shutil.copytree(s, d, False, None)  # Kopiert Verzeichnisse rekursiv
-            else:
-                shutil.copy2(s, d)  # Kopiert Dateien
-        return "Inhalt erfolgreich kopiert."
-    except Exception as e:
-        raise OSError(f"Fehler beim Kopieren des Inhalts: {e}")
+from utils.file_handling import (
+    delete_directory_contents,
+    copy_directory_contents
+)
 
 if __name__ == '__main__':
     # Verzeichnisse für die Tests definieren
