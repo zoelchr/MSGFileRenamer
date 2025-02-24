@@ -36,12 +36,12 @@ from datetime import datetime
 
 def get_sender_msg_file(file_path):
     """
-    Abrufen des Senders aus einem MSG-File.
+    Ruft die E-Mail-Adresse des Absenders aus einer MSG-Datei ab.
 
     Parameter:
     file_path (str): Der Pfad zur MSG-Datei.
 
-    Gibt:
+    Rückgabewert:
     str: Die E-Mail-Adresse des Absenders oder "Unbekannt", wenn kein Sender vorhanden ist.
     """
     try:
@@ -52,21 +52,22 @@ def get_sender_msg_file(file_path):
     except Exception as e:
         return f"Fehler beim Auslesen des Senders: {str(e)}"
 
+
 def parse_sender_msg_file(sender: str):
     """
-    Analysiert den Sender-String eines MSG-Files und extrahiert den Namen und die Email-Adresse.
+    Analysiert den Sender-String eines MSG-Files und extrahiert den Namen und die E-Mail-Adresse.
 
     Parameter:
     sender (str): Der Sender-String.
 
-    Gibt:
+    Rückgabewert:
     dict: Ein Dictionary mit 'sender_name', 'sender_email' und 'contains_sender_email'.
     """
     sender_name = ""
     sender_email = ""
     contains_sender_email = False
 
-    # Regulärer Ausdruck für die Email-Adresse
+    # Regulärer Ausdruck für die E-Mail-Adresse
     email_pattern = r'<(.*?)>'
     email_match = re.search(email_pattern, sender)
 
@@ -74,7 +75,7 @@ def parse_sender_msg_file(sender: str):
         sender_email = email_match.group(1)
         contains_sender_email = True
 
-    # Entferne die Email-Adresse aus dem Sender-String
+    # Entferne die E-Mail-Adresse aus dem Sender-String
     sender_name = re.sub(email_pattern, '', sender).strip()
     # Entferne Anführungszeichen aus dem Sender-String
     sender_name = sender_name.replace("\"", '')
@@ -85,6 +86,7 @@ def parse_sender_msg_file(sender: str):
         "contains_sender_email": contains_sender_email
     }
 
+
 def get_subject_msg_file(file_path):
     """
     Gibt den Betreff der Nachricht aus einer MSG-Datei zurück.
@@ -92,7 +94,7 @@ def get_subject_msg_file(file_path):
     Parameter:
     file_path (str): Der Pfad zur MSG-Datei.
 
-    Gibt:
+    Rückgabewert:
     str: Der Betreff der Nachricht oder "Unbekannt", wenn kein Betreff vorhanden ist.
     """
     try:
@@ -104,18 +106,18 @@ def get_subject_msg_file(file_path):
         return f"Fehler beim Auslesen des Betreffs: {str(e)}"
 
 
-# Funktion zum Laden der bekannten Sender
 def load_known_senders(file_path):
     """
-    Lädt die bekannten Sender aus einer CSV-Datei.
+    Lädt bekannte Sender aus einer CSV-Datei.
 
     Parameter:
     file_path (str): Der Pfad zur CSV-Datei.
 
-    Gibt:
+    Rückgabewert:
     DataFrame: Ein DataFrame mit den bekannten Sendern.
     """
     return pd.read_csv(file_path)
+
 
 def get_date_sent_msg_file(file_path):
     """
@@ -124,7 +126,7 @@ def get_date_sent_msg_file(file_path):
     Parameter:
     file_path (str): Der Pfad zur MSG-Datei.
 
-    Gibt:
+    Rückgabewert:
     str: Das Datum der gesendeten Nachricht oder "Unbekannt", wenn kein Datum vorhanden ist.
     """
     try:
@@ -135,6 +137,7 @@ def get_date_sent_msg_file(file_path):
     except Exception as e:
         return f"Fehler beim Auslesen des Datums: {str(e)}"
 
+
 def create_log_file(base_name, directory):
     """
     Erstellt ein Logfile im Excel-Format mit einem Zeitstempel im Namen.
@@ -143,7 +146,7 @@ def create_log_file(base_name, directory):
     base_name (str): Der Basisname des Logfiles.
     directory (str): Das Verzeichnis, in dem das Logfile gespeichert werden soll.
 
-    Gibt:
+    Rückgabewert:
     str: Der Pfad zur erstellten Logdatei.
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -151,7 +154,9 @@ def create_log_file(base_name, directory):
     log_file_path = os.path.join(directory, log_file_name)
 
     # Leeres DataFrame mit den gewünschten Spalten erstellen
-    df = pd.DataFrame(columns=["Fortlaufende Nummer", "Verzeichnisname", "Filename", "Sendername", "Senderemail", "Contains Senderemail", "Timestamp", "Formatierter Timestamp", "Betreff", "Bereinigter Betreff", "Neuer Filename", "Neuer gekürzter Fielname", "Neuer Dateipfad"])
+    df = pd.DataFrame(columns=["Fortlaufende Nummer", "Verzeichnisname", "Filename", "Sendername", "Senderemail",
+                               "Contains Senderemail", "Timestamp", "Formatierter Timestamp", "Betreff",
+                               "Bereinigter Betreff", "Neuer Filename", "Neuer gekürzter Fielname", "Neuer Dateipfad"])
 
     try:
         df.to_excel(log_file_path, index=False)
@@ -167,6 +172,9 @@ def log_entry(log_file_path, entry):
     Parameter:
     log_file_path (str): Der Pfad zur Logdatei.
     entry (dict): Ein Dictionary mit den Werten für die Logzeile.
+
+    Rückgabewert:
+    None
     """
     df = pd.read_excel(log_file_path)
 
@@ -177,17 +185,19 @@ def log_entry(log_file_path, entry):
     if not new_entry_df.empty and not new_entry_df.isnull().all(axis=1).any():
         # Logdatei laden oder erstellen
         if os.path.exists(log_file_path):
-            df = pd.read_excel(log_file_path)
-            # Nur nicht-leere DataFrames zusammenführen
-            if not df.empty:
-                df = pd.concat([df, new_entry_df], ignore_index=True)  # Eintrag hinzufügen
-            else:
-                df = new_entry_df  # Neue Logdatei erstellen, wenn df leer ist
+            with pd.ExcelFile(log_file_path) as xls:  # Verwende einen with-Block
+                df = pd.read_excel(xls)
+                # Nur nicht-leere DataFrames zusammenführen
+                if not df.empty:
+                    df = pd.concat([df, new_entry_df], ignore_index=True)  # Eintrag hinzufügen
+                else:
+                    df = new_entry_df  # Neue Logdatei erstellen, wenn df leer ist
         else:
             df = new_entry_df  # Neue Logdatei erstellen
 
         # Speichern des aktualisierten DataFrames in die Logdatei
         df.to_excel(log_file_path, index=False)
+
 
 def convert_to_utc_naive(datetime_stamp):
     """
@@ -196,12 +206,13 @@ def convert_to_utc_naive(datetime_stamp):
     Parameter:
     datetime_stamp (datetime): Der Zeitstempel, der konvertiert werden soll.
 
-    Gibt:
+    Rückgabewert:
     datetime: Ein UTC-naives Datetime-Objekt.
     """
     if datetime_stamp.tzinfo is not None:
         return datetime_stamp.replace(tzinfo=None)  # Entfernen der Zeitzone
     return datetime_stamp
+
 
 def format_datetime(datetime_stamp, format_string):
     """
@@ -211,8 +222,11 @@ def format_datetime(datetime_stamp, format_string):
     datetime_stamp (datetime): Der Zeitstempel, der formatiert werden soll.
     format_string (str): Das gewünschte Format für den Zeitstempel.
 
-    Gibt:
+    Rückgabewert:
     str: Der formatierte Zeitstempel als String.
+
+    Beispiel:
+        formatted_time = format_datetime(datetime.now(), "%Y-%m-%d %H:%M:%S")
     """
     if isinstance(datetime_stamp, datetime):
         return datetime_stamp.strftime(format_string)
@@ -232,9 +246,12 @@ def custom_sanitize_text(encoded_textstring):
     Parameter:
     encoded_textstring (str): Der ursprüngliche Textstring, der bereinigt werden soll.
 
-    Gibt:
+    Rückgabewert:
     str: Der bereinigte Textstring, der als gültiger Dateiname verwendet werden kann,
          wobei unerwünschte Zeichen entfernt oder ersetzt wurden.
+
+    Beispiel:
+        sanitized_string = custom_sanitize_text("Beispiel: ungültige Zeichen / \\ * ? < > |")
     """
     # Ersetze mehrere aufeinanderfolgende Leerzeichen durch ein einzelnes Leerzeichen
     encoded_textstring = re.sub(r'\s+', ' ', encoded_textstring)
@@ -277,9 +294,9 @@ def custom_sanitize_text(encoded_textstring):
         "ü": "ue",
         "Ü": "Ue",
         "ß": "ss",
-        "é": "e" ,
-        ",": "" ,
-        "!": "" ,
+        "é": "e",
+        ",": "",
+        "!": "",
         "'": "_",
         ";": "_",
         "“": "",
@@ -290,6 +307,7 @@ def custom_sanitize_text(encoded_textstring):
         encoded_textstring = encoded_textstring.replace(old_char, new_char)
 
     return encoded_textstring
+
 
 def truncate_filename_if_needed(file_path, max_length, truncation_marker):
     """
@@ -305,8 +323,11 @@ def truncate_filename_if_needed(file_path, max_length, truncation_marker):
     max_length (int): Die maximal zulässige Länge des gesamten Dateipfads.
     truncation_marker (str): Die Zeichenkette, die verwendet wird, um das Kürzen anzuzeigen (z.B. "<>").
 
-    Gibt:
+    Rückgabewert:
     str: Der möglicherweise gekürzte Dateipfad, der die maximal zulässige Länge nicht überschreitet.
+
+    Beispiel:
+        truncated_path = truncate_filename_if_needed("D:/Dev/pycharm/MSGFileRenamer/modules/very_long_filename_that_exceeds_the_limit.txt", 50, "...")
     """
     if len(file_path) > max_length:
         # Berechne die maximale Länge für den Dateinamen
@@ -322,5 +343,4 @@ def truncate_filename_if_needed(file_path, max_length, truncation_marker):
             return os.path.join(os.path.dirname(file_path), truncated_filename)
 
     return file_path
-
 

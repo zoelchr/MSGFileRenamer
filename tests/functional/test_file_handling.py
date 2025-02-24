@@ -25,6 +25,7 @@ from utils.file_handling import (
     test_file_access
 )
 from modules.msg_handling import get_date_sent_msg_file
+from utils.testset_preparation import prepare_test_directory
 
 if __name__ == '__main__':
     # Verzeichnisse für die Tests definieren
@@ -35,13 +36,11 @@ if __name__ == '__main__':
     if not os.path.isdir(TARGET_DIRECTORY_TEST_DATA):
         os.makedirs(TARGET_DIRECTORY_TEST_DATA, exist_ok=True)
 
-    # Löschen des Zielverzeichnisses und Ausgabe des Verzeichnisnamens
-    print(f"Lösche Inhalt von: {TARGET_DIRECTORY_TEST_DATA}")
-    print(delete_directory_contents(TARGET_DIRECTORY_TEST_DATA))
-
-    # Kopieren des Quellverzeichnisses und Ausgabe der Verzeichnisnamen
-    print(f"Kopiere Inhalt von: {SOURCE_DIRECTORY_TEST_DATA} nach: {TARGET_DIRECTORY_TEST_DATA}")
-    print(copy_directory_contents(SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA))
+    # Bereite das Zielverzeichnis vor und überprüfe den Erfolg
+    success = prepare_test_directory(SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA)
+    if not success:
+        print("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.")
+        exit(1)  # Programm abbrechen
 
     # Zähler für umbenannte Dateien und Probleme initialisieren
     renamed_count = 0

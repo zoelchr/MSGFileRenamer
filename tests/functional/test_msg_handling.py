@@ -18,6 +18,7 @@ Führen Sie dieses Skript aus, um alle Tests durchzuführen und die Ergebnisse z
 Beispiel:
     python -m unittest test_msg_handling.py
 """
+
 import os
 from modules.msg_handling import (
     get_sender_msg_file,
@@ -32,10 +33,7 @@ from modules.msg_handling import (
     custom_sanitize_text,
     truncate_filename_if_needed
 )
-from utils.file_handling import (
-    delete_directory_contents,
-    copy_directory_contents
-)
+from utils.testset_preparation import prepare_test_directory
 
 if __name__ == '__main__':
     # Verzeichnisse für die Tests definieren
@@ -45,30 +43,32 @@ if __name__ == '__main__':
     # Maximal zulässige Pfadlänge für Windows 11
     max_path_length = 260
 
+    # Log-Verzeichnis und Basisname für Logdateien festlegen
     LOG_DIRECTORY = r'D:\Dev\pycharm\MSGFileRenamer\logs'
     BASE_LOG_NAME = 'msg_log'
 
-    # LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders.csv'
-    # Liste der bekannten Sender
+    # Liste der bekannten Sender aus einer CSV-Datei
     LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders_private.csv'
 
     # Beispiel für das gewünschte Format für Zeitstempel
     format_string = "%Y%m%d-%Huhr%M"  # Beispiel: JJJJMMTT-HHMM
 
-    # Zähler für die fortlaufende Nummer
+    # Zähler für die fortlaufende Nummer initialisieren
     counter = 1
 
-    # Logfile erstellen
+    # Logdatei erstellen und den Pfad ausgeben
     log_file_path = create_log_file(BASE_LOG_NAME, LOG_DIRECTORY)
     print(f"Logdatei erstellt: {log_file_path}")
 
-    # Löschen des Zielverzeichnisses und Ausgabe des Verzeichnisnamens
-    print(f"Lösche Inhalt von: {TARGET_DIRECTORY_TEST_DATA}")
-    print(delete_directory_contents(TARGET_DIRECTORY_TEST_DATA))
+    # Wenn TARGET_DIRECTORY_TEST_DATA noch nicht existiert, dann erstellen
+    if not os.path.isdir(TARGET_DIRECTORY_TEST_DATA):
+        os.makedirs(TARGET_DIRECTORY_TEST_DATA, exist_ok=True)
 
-    # Kopieren des Quellverzeichnisses und Ausgabe der Verzeichnisnamen
-    print(f"Kopiere Inhalt von: {SOURCE_DIRECTORY_TEST_DATA} nach: {TARGET_DIRECTORY_TEST_DATA}")
-    print(copy_directory_contents(SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA))
+    # Bereite das Zielverzeichnis vor und überprüfe den Erfolg
+    success = prepare_test_directory(SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA)
+    if not success:
+        print("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.")
+        exit(1)  # Programm abbrechen
 
     # Laden der bekannten Sender aus der CSV-Datei
     known_senders_df = load_known_senders(LIST_OF_KNOWN_SENDERS)
@@ -79,7 +79,8 @@ if __name__ == '__main__':
             file_path = os.path.join(root, file)
             print(f"Verzeichnis: {root}")
             if file.endswith(".msg"):
-                sender = get_sender_msg_file(file_path)  # Absender aus der MSG-Datei abrufen
+                # Absender aus der MSG-Datei abrufen
+                sender = get_sender_msg_file(file_path)
                 print(f"\tDatei: {file}")
                 print(f"\tExtrahierter Sender: {sender}")
 
@@ -102,17 +103,21 @@ if __name__ == '__main__':
                 else:
                     parsed_sender_email["contains_sender_email"] = True  # Wenn eine Email gefunden wurde
 
+                # Versanddatum abrufen und konvertieren
                 datetime_stamp = get_date_sent_msg_file(os.path.join(root, file))  # Versanddatum abrufen
                 datetime_stamp = convert_to_utc_naive(datetime_stamp)  # Sicherstellen, dass der Zeitstempel zeitzonenunabhängig ist
                 print(f"\tExtrahierter Versandzeitpunkt: {datetime_stamp}")  # Ausgabe des Versanddatums
 
-                formatted_timestamp = format_datetime(datetime_stamp, format_string)  # Formatieren des Zeitstempels
+                # Formatieren des Zeitstempels
+                formatted_timestamp = format_datetime(datetime_stamp, format_string)
                 print(f"\tFormatierter Versandzeitpunkt: {formatted_timestamp}")
 
-                subject = get_subject_msg_file(file_path)  # Betreff auslesen
+                # Betreff auslesen
+                subject = get_subject_msg_file(file_path)
                 print(f"\tExtrahierter Betreff: {subject}")
 
-                sanitized_subject = custom_sanitize_text(subject)  # Betreff bereinigen
+                # Betreff bereinigen
+                sanitized_subject = custom_sanitize_text(subject)
                 print(f"\tBereinigter Betreff: {sanitized_subject}")
 
                 # Neuen Namen der Datei festlegen

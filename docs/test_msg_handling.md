@@ -39,3 +39,12 @@ Führen Sie den folgenden Befehl in der Kommandozeile aus:
 
 ```bash
 python -m unittest test_msg_handling.py
+```
+
+### To-Do: Noch nicht abgedeckte Funktionen
+Die folgenden Funktionen aus `msg_handling.py` sind derzeit nicht durch Tests in test_msg_handling.py abgedeckt:
+- `load_known_senders(file_path)`: Es sollten Tests hinzugefügt werden, um sicherzustellen, dass bekannte Sender korrekt geladen werden.
+- `create_log_file(base_name, directory)`: Tests zur Überprüfung der Erstellung von Logdateien sollten implementiert werden.
+- `convert_to_utc_naive(datetime_stamp)`: Tests zur Validierung der Konvertierung von Zeitstempeln in UTC-naive Objekte fehlen.
+- `format_datetime(datetime_stamp, format_string)`: Tests zur Überprüfung der Formatierung von Zeitstempeln sollten hinzugefügt werden.
+Diese Funktionen sollten in zukünftigen Testläufen berücksichtigt werden, um eine vollständige Testabdeckung zu gewährleisten.
