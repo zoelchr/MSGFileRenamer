@@ -12,13 +12,9 @@ Beispiel:
 """
 
 import os
-import shutil
 import datetime
 from utils.file_handling import (
-    delete_directory_contents,
-    copy_directory_contents,
     rename_file,
-    delete_file,
     format_datetime_stamp,
     set_file_creation_date,
     set_file_date,

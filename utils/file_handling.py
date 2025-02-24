@@ -1,5 +1,22 @@
+"""
+file_handling.py
 
+Dieses Modul enthält Funktionen zur Handhabung von Dateien und Verzeichnissen.
+Es bietet Routinen zum Testen des Zugriffs auf Dateien, Umbenennen von Dateien,
+Löschen von Dateien und Verzeichnissen sowie zum Kopieren von Inhalten zwischen Verzeichnissen.
+Zusätzlich ermöglicht es das Setzen von Erstellungs- und Änderungsdaten für Dateien.
 
+Funktionen:
+- test_file_access(file_path): Testet den Lese- und Schreibzugriff auf eine Datei.
+- rename_file(current_name, new_name, retries=3, delay_ms=1000): Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
+- delete_file(file_path, retries=3, delay_ms=1000): Löscht eine Datei und prüft die erfolgreiche Löschung.
+- sanitize_filename(filename): Ersetzt ungültige Zeichen durch Unterstriche.
+- format_datetime_stamp(datetime_stamp, format_string): Formatiert einen Zeitstempel in das angegebene Format.
+- set_file_date(file_path, new_date): Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert.
+- set_file_creation_date(file_path, new_creation_date): Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert.
+- delete_directory_contents(directory_path): Löscht den gesamten Inhalt eines angegebenen Verzeichnisses.
+- copy_directory_contents(source_directory_path, target_directory_path): Kopiert den gesamten Inhalt eines Quellverzeichnisses in ein Zielverzeichnis.
+"""
 
 import os
 import time
@@ -14,7 +31,7 @@ def test_file_access(file_path):
     """
     Test ob der lesende und schreibende Zugriff auf eine Datei möglich ist.
 
-    Gibt:
+    Rückgabewert:
     dict: Ein Dictionary mit dem Zugriffsergebnis und einer Detailinformation.
     """
     access_result = {}
@@ -43,7 +60,7 @@ def rename_file(current_name, new_name, retries=3, delay_ms=1000):
     retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 3).
     delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 1000).
 
-    Gibt:
+    Rückgabewert:
     str: Erfolgsmeldung oder Fehlermeldung.
     """
     attempt = 0
@@ -69,7 +86,7 @@ def delete_file(file_path, retries=3, delay_ms=1000):
     retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 3).
     delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 1000).
 
-    Gibt:
+    Rückgabewert:
     str: Erfolgsmeldung oder Fehlermeldung.
     """
     attempt = 0
@@ -90,10 +107,28 @@ def delete_file(file_path, retries=3, delay_ms=1000):
 
 
 def sanitize_filename(filename):
-    # Ersetze ungültige Zeichen durch Unterstriche
+    """
+    Ersetzt ungültige Zeichen im Dateinamen durch Unterstriche.
+
+    Parameter:
+    filename (str): Der ursprüngliche Dateiname.
+
+    Rückgabewert:
+    str: Der bereinigte Dateiname, der nur gültige Zeichen enthält.
+    """
     return re.sub(r'[<>:"/\\|?*]', '_', filename)
 
 def format_datetime_stamp(datetime_stamp, format_string):
+    """
+    Formatiert einen Zeitstempel in das angegebene Format.
+
+    Parameter:
+    datetime_stamp (datetime): Der Zeitstempel, der formatiert werden soll.
+    format_string (str): Das gewünschte Format für den Zeitstempel.
+
+    Rückgabewert:
+    str: Der formatierte Zeitstempel als String.
+    """
     # Überprüfen, ob datetime_stamp ein datetime-Objekt ist
     if isinstance(datetime_stamp, datetime.datetime):
         dt = datetime_stamp  # Direkt verwenden, wenn es ein datetime-Objekt ist
@@ -112,7 +147,7 @@ def set_file_date(file_path, new_date):
     file_path (str): Der Pfad zur Datei.
     new_date (str): Das neue Datum im Format 'YYYY-MM-DD HH:MM:SS'.
 
-    Gibt:
+    Rückgabewert:
     str: Erfolgsmeldung oder Fehlermeldung.
     """
     try:
@@ -131,7 +166,7 @@ def set_file_creation_date(file_path, new_creation_date):
     file_path (str): Der Pfad zur Datei.
     new_creation_date (str): Das neue Erstelldatum im Format 'YYYY-MM-DD HH:MM:SS'.
 
-    Gibt:
+    Rückgabewert:
     str: Erfolgsmeldung oder Fehlermeldung.
     """
     try:
@@ -167,7 +202,7 @@ def delete_directory_contents(directory_path):
     Parameter:
     directory_path (str): Der Pfad des Verzeichnisses, dessen Inhalt gelöscht werden soll.
 
-    Gibt:
+    Rückgabewert:
     str: Eine Bestätigung, dass der Inhalt erfolgreich gelöscht wurde.
 
     Wirft:
