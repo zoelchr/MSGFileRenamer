@@ -20,6 +20,9 @@ Beispiel:
 """
 
 import os
+import logging
+
+# Importieren von Funktionen aus den Modulen msg_handling und testset_preparation
 from modules.msg_handling import (
     get_sender_msg_file,
     parse_sender_msg_file,
@@ -33,9 +36,28 @@ from modules.msg_handling import (
     custom_sanitize_text,
     truncate_filename_if_needed
 )
+# Importieren von Funktionen aus meinem Modul testset_preparation
 from utils.testset_preparation import prepare_test_directory
 
+# Log-Verzeichnis und Basisname für Logdateien festlegen
+LOG_DIRECTORY = r'D:\Dev\pycharm\MSGFileRenamer\logs'
+PROG_LOG_NAME = 'test_msg_handling_prog_log.log'
+prog_log_file_path = os.path.join(LOG_DIRECTORY, PROG_LOG_NAME)
+
+# Logging für Test und Debugging konfigurieren
+DEBUG_MODE=True # Debugging-Modus aktivieren
+
+def setup_logging(debug=False):
+    log_level=logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        filename=prog_log_file_path
+    )
+
 if __name__ == '__main__':
+
     # Verzeichnisse für die Tests definieren
     SOURCE_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\data\sample_files\testset-long'
     TARGET_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\tests\functional\testdir'
@@ -43,22 +65,32 @@ if __name__ == '__main__':
     # Maximal zulässige Pfadlänge für Windows 11
     max_path_length = 260
 
-    # Log-Verzeichnis und Basisname für Logdateien festlegen
-    LOG_DIRECTORY = r'D:\Dev\pycharm\MSGFileRenamer\logs'
-    BASE_LOG_NAME = 'msg_log'
+    # Logging für MSG-Bearbeitung konfigurieren (Excel-Datei)
+    MSG_LOG_NAME = 'msg_log'
+    MSG_LOG_TABLE_HEADER= columns=["Fortlaufende Nummer", "Verzeichnisname", "Filename", "Sendername", "Senderemail",
+                               "Contains Senderemail", "Timestamp", "Formatierter Timestamp", "Betreff",
+                               "Bereinigter Betreff", "Neuer Filename", "Neuer gekürzter Filename", "Neuer Dateipfad"]
 
     # Liste der bekannten Sender aus einer CSV-Datei
     LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders_private.csv'
 
     # Beispiel für das gewünschte Format für Zeitstempel
-    format_string = "%Y%m%d-%Huhr%M"  # Beispiel: JJJJMMTT-HHMM
+    format_timestamp_string = "%Y%m%d-%Huhr%M"  # Beispiel: JJJJMMTT-HHuhrMM
+
+    # Logging für Test und Debugging konfigurieren
+    setup_logging(DEBUG_MODE)
+    logger = logging.getLogger(prog_log_file_path)
+    # Logging für die Programm-Ausführung
+    logger.info("Programm gestartet")
+    logger.info(f"Debug-Modus: {DEBUG_MODE}")
+    logging.info(f"Programm Logdatei: {prog_log_file_path}")
+
+    # MSG-Logdatei erstellen und den Pfad ausgeben
+    msg_log_file_path = create_log_file(MSG_LOG_NAME, LOG_DIRECTORY, MSG_LOG_TABLE_HEADER)
+    print(f"MSG Logdatei erstellt: {msg_log_file_path}")
 
     # Zähler für die fortlaufende Nummer initialisieren
     counter = 1
-
-    # Logdatei erstellen und den Pfad ausgeben
-    log_file_path = create_log_file(BASE_LOG_NAME, LOG_DIRECTORY)
-    print(f"Logdatei erstellt: {log_file_path}")
 
     # Wenn TARGET_DIRECTORY_TEST_DATA noch nicht existiert, dann erstellen
     if not os.path.isdir(TARGET_DIRECTORY_TEST_DATA):
@@ -68,6 +100,7 @@ if __name__ == '__main__':
     success = prepare_test_directory(SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA)
     if not success:
         print("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.")
+        logging.error("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.")
         exit(1)  # Programm abbrechen
 
     # Laden der bekannten Sender aus der CSV-Datei
@@ -77,17 +110,21 @@ if __name__ == '__main__':
     for root, dirs, files in os.walk(TARGET_DIRECTORY_TEST_DATA):
         for file in files:
             file_path = os.path.join(root, file)
-            print(f"Verzeichnis: {root}")
+            print(f"Aktuelles Verzeichnis: {root}")
             if file.endswith(".msg"):
-                # Absender aus der MSG-Datei abrufen
+                # Absender-String aus der MSG-Datei abrufen
                 sender = get_sender_msg_file(file_path)
                 print(f"\tDatei: {file}")
                 print(f"\tExtrahierter Sender: {sender}")
 
-                # Aufruf der Funktion zur Analyse des Absenders
+                # Aufruf der Funktion zur Analyse der Absender-Email
                 parsed_sender_email = parse_sender_msg_file(sender)
-                if parsed_sender_email["sender_email"]:
+                if parsed_sender_email["contains_sender_email"]:
                     print(f"\tParsed Sender-Email: {parsed_sender_email['sender_email']}")  # Ausgabe der analysierten Sender-Email
+                    logger.debug(f"Parsed Sender-Email: {parsed_sender_email['sender_email']}")  # Debugging-Ausgabe: Log-File
+                else:
+                    print(f"\tKeine Absender-Email gefunden.")
+                    logger.debug(f"Keine Absender-Email gefunden.")  # Debugging-Ausgabe: Log-File
 
                 # Überprüfen, ob eine Sender-Email vorhanden ist
                 if not parsed_sender_email["sender_email"]:  # Nur ausführen, wenn keine Sender-Email gefunden wurde
@@ -98,8 +135,10 @@ if __name__ == '__main__':
                         parsed_sender_email["sender_email"] = known_sender_row.iloc[0]["sender_email"]
                         parsed_sender_email["contains_sender_email"] = True
                         print(f"\tSender-Email aus Tabelle: {parsed_sender_email['sender_email']}")  # Ausgabe der Sender-Email aus der Tabelle
+                        logger.debug(f"Sender-Email aus Tabelle: {parsed_sender_email['sender_email']}")  # Debugging-Ausgabe: Log-File
                     else:
                         parsed_sender_email["contains_sender_email"] = False
+                        logger.debug(f"Keine Sender-Email in Tabelle gefunden.")  # Debugging-Ausgabe: Log-File
                 else:
                     parsed_sender_email["contains_sender_email"] = True  # Wenn eine Email gefunden wurde
 
@@ -109,7 +148,7 @@ if __name__ == '__main__':
                 print(f"\tExtrahierter Versandzeitpunkt: {datetime_stamp}")  # Ausgabe des Versanddatums
 
                 # Formatieren des Zeitstempels
-                formatted_timestamp = format_datetime(datetime_stamp, format_string)
+                formatted_timestamp = format_datetime(datetime_stamp, format_timestamp_string)
                 print(f"\tFormatierter Versandzeitpunkt: {formatted_timestamp}")
 
                 # Betreff auslesen
@@ -150,7 +189,7 @@ if __name__ == '__main__':
                 }
 
                 # Eintrag ins Logfile hinzufügen
-                log_entry(log_file_path, entry)
+                log_entry(msg_log_file_path, entry)
 
                 # Zähler erhöhen
                 counter += 1

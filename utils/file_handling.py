@@ -26,6 +26,67 @@ import win32con
 import shutil
 import re
 import datetime
+import logging
+from enum import Enum
+
+class FileAccessStatus(Enum):
+    READABLE = "File is readable"
+    WRITABLE = "File is writable"
+    EXECUTABLE = "File is executable"
+    NOT_FOUND = "File not found"
+    NO_PERMISSION = "No permission to access"
+    LOCKED = "File is locked by another process"
+    UNKNOWN_ERROR = "Unknown error"
+    UNKNOWN = "Status is unkown"
+
+class RenameResult(Enum):
+    SUCCESS = "Success"
+    FILE_NOT_FOUND = "File not found"
+    DESTINATION_EXISTS = "Destination file already exists"
+    PERMISSION_DENIED = "Permission denied"
+    INVALID_FILENAME = "Invalid filename"
+    INVALID_FILENAME1 = "Source is a file and destination is a directory"
+    INVALID_FILENAME2 = "Part of the path is not a directory"
+    UNKNOWN_ERROR = "Unknown error"
+
+logger = logging.getLogger(__name__)
+
+class FileHandle:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.handle = None
+
+    def __enter__(self):
+        self.handle = win32file.CreateFile(
+            self.file_path,
+            win32con.GENERIC_WRITE,
+            0,
+            None,
+            win32con.OPEN_EXISTING,
+            win32con.FILE_ATTRIBUTE_NORMAL,
+            None
+        )
+        return self.handle
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.handle is not None:
+            win32file.CloseHandle(self.handle)
+
+def test_read_access(file_path):
+    try:
+        with open(file_path, 'r'):
+            logger.debug(f"Auf die Datei ist Lesezugriff möglich: {file_path}")
+            return True
+    except Exception as e:
+        logger.debug(f"Auf die Datei ist kein Lesezugriff möglich: {file_path} (Exception-Objekt: {e})")
+        return False
+
+def test_write_access(file_path):
+    try:
+        with open(file_path, 'a'):
+            return True
+    except Exception:
+        return False
 
 def test_file_access(file_path):
     """
@@ -43,22 +104,73 @@ def test_file_access(file_path):
                 with open(file_path, 'a'):
                     access_result['status'] = "Zugriff: Lesen und Schreiben möglich"
             except Exception:
+                logger.debug(f"Auf die Datei ist nur lesender Zugriff möglich: {file_path}")  # Debugging-Ausgabe: Log-File
                 access_result['status'] = "Zugriff: Nur Lesen möglich"
     except Exception as e:
+        logger.debug(f"Auf die Datei ist kein Zugriff möglich: {file_path} (Exception-Objekt: {e})")  # Debugging-Ausgabe: Log-File
         access_result['status'] = "Zugriff: Nicht möglich"
         access_result['detail'] = str(e)
 
     return access_result
 
-def rename_file(current_name, new_name, retries=3, delay_ms=1000):
+def test_file_access2(file_path: str) -> list[FileAccessStatus]:
+    """Überprüft den Datei-Zugriffsstatus und gibt eine Liste von FileAccessStatus-Enums zurück.
+
+    Beispiel:
+    status = check_file_access(file_path)
+    print(f"Status: {[s.value for s in status]}")
+    """
+    access_status = []
+
+    try:
+        # Prüfen, ob die Datei existiert
+        if not os.path.exists(file_path):
+            logging.warning(f"Datei nicht gefunden: {file_path}")
+            return [FileAccessStatus.NOT_FOUND]
+
+        # Prüfen, ob die Datei gesperrt ist (Windows-typisch)
+        try:
+            with open(file_path, "a"):  # Testweise öffnen zum Schreiben
+                pass
+        except PermissionError:
+            logging.warning(f"Datei ist gesperrt oder nicht schreibbar: {file_path}")
+            access_status.append(FileAccessStatus.LOCKED)
+
+        # Prüfen, welche Berechtigungen vorliegen
+        if os.access(file_path, os.R_OK):
+            access_status.append(FileAccessStatus.READABLE)
+
+        if os.access(file_path, os.W_OK):
+            access_status.append(FileAccessStatus.WRITABLE)
+
+        if os.access(file_path, os.X_OK):
+            access_status.append(FileAccessStatus.EXECUTABLE)
+
+        # Falls keine der Berechtigungen vorhanden ist
+        if not access_status:
+            logging.warning(f"Kein Zugriff auf Datei: {file_path}")
+            access_status.append(FileAccessStatus.NO_PERMISSION)
+
+        return access_status
+
+    except FileNotFoundError:
+        logging.error(f"Datei wurde nicht gefunden: {file_path}")
+        return [FileAccessStatus.NOT_FOUND]
+
+    except Exception as e:
+        logging.exception(f"Unerwarteter Fehler beim Zugriff auf {file_path}: {e}")
+        return [FileAccessStatus.UNKNOWN_ERROR]
+
+
+def rename_file(current_name, new_name, retries=1, delay_ms=200):
     """
     Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
 
     Parameter:
     current_name (str): Der aktuelle Dateiname.
     new_name (str): Der neue Dateiname.
-    retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 3).
-    delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 1000).
+    retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 1).
+    delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 200).
 
     Rückgabewert:
     str: Erfolgsmeldung oder Fehlermeldung.
@@ -68,16 +180,79 @@ def rename_file(current_name, new_name, retries=3, delay_ms=1000):
 
     while attempt < retries:
         try:
+            logging.debug(f"Aktueller Dateiname: {current_name}")  # Debugging-Ausgabe: Log-File
+            logging.debug(f"Neuer Dateiname: {new_name}")  # Debugging-Ausgabe: Log-File
             os.rename(current_name, new_name)
-            return f"Datei erfolgreich umbenannt in: {new_name}"
+            return "Datei erfolgreich umbenannt."
+        except FileNotFoundError:
+            print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
+            logging.debug(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Log-File
+            last_error = "Datei nicht gefunden."
+        except PermissionError:
+            print(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Console
+            logging.debug(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Log-File
+            last_error = "Berechtigungsfehler."
         except Exception as e:
-            last_error = e  # Speichere den Fehler
-            attempt += 1
-            time.sleep(delay_ms / 1000)  # Wartezeit in Sekunden
+            last_error = f"Fehler bei Umbenennung: {str(e)}"  # Speichere den Fehler
 
-    return f"Fehler: Umbenennung von '{current_name}' in '{new_name}' nach {retries} Versuchen fehlgeschlagen: {str(last_error)}"
+        attempt += 1
+        time.sleep(delay_ms / 1000)  # Wartezeit in Sekunden
 
-def delete_file(file_path, retries=3, delay_ms=1000):
+    return f"{last_error}: Nach {retries} Versuchen fehlgeschlagen."
+
+def rename_file2(current_name, new_name, retries=1, delay_ms=200) -> RenameResult:
+    """
+    Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
+    Neue verbesserte Version
+
+    Parameter:
+    current_name (str): Der aktuelle Dateiname.
+    new_name (str): Der neue Dateiname.
+    retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 1).
+    delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 200).
+
+    Rückgabewert:
+    RenameResult: Enum-Wert, der den Erfolg oder Fehler beschreibt.
+    """
+    attempt = 0
+    rename_file_result = None  # Variable für den Rückgabewert
+
+    while attempt < retries:
+        try:
+            logging.debug(f"Aktueller Dateiname: {current_name}")  # Debugging-Ausgabe: Log-File
+            logging.debug(f"Neuer Dateiname: {new_name}")  # Debugging-Ausgabe: Log-File
+            os.rename(current_name, new_name)
+            rename_file_result = RenameResult.SUCCESS  # Erfolgreiche Umbenennung
+        except FileNotFoundError:
+            print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
+            logging.error(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Log-File
+            rename_file_result = RenameResult.FILE_NOT_FOUND  # Datei nicht gefunden
+        except PermissionError:
+            print(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Console
+            logging.error(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Log-File
+            rename_file_result = RenameResult.PERMISSION_DENIED  # Berechtigungsfehler
+        except FileExistsError:
+            print(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Console
+            logging.error(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Log-File
+            return RenameResult.DESTINATION_EXISTS
+        except IsADirectoryError:
+            print(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Console
+            logging.error(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Log-File
+            return RenameResult.INVALID_FILENAME1
+        except NotADirectoryError:
+            print(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Console
+            logging.error(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Log-File
+            return RenameResult.INVALID_FILENAME2
+        except Exception as e:
+            rename_file_result = RenameResult.UNKNOWN_ERROR  # Unbekannter Fehler
+            logging.error(f"Fehler bei Umbenennung: {str(e)}")  # Debugging-Ausgabe: Log-File
+
+        attempt += 1
+        time.sleep(delay_ms / 1000)  # Wartezeit in Sekunden
+
+    return rename_file_result
+
+def delete_file(file_path, retries=1, delay_ms=200):
     """
     Löscht eine Datei und prüft die erfolgreiche Löschung.
 
@@ -174,26 +349,15 @@ def set_file_creation_date(file_path, new_creation_date):
         timestamp = time.mktime(time.strptime(new_creation_date, '%Y-%m-%d %H:%M:%S'))
         creation_time = pywintypes.Time(timestamp)
 
-        # Öffne die Datei ohne with-Block
-        handle = win32file.CreateFile(
-            file_path,
-            win32con.GENERIC_WRITE,
-            0,
-            None,
-            win32con.OPEN_EXISTING,
-            win32con.FILE_ATTRIBUTE_NORMAL,
-            None
-        )
-        try:
+        with FileHandle(file_path) as handle:
             # Setze das Erstelldatum
             win32file.SetFileTime(handle, creation_time, None, None)
-        finally:
-            # Stelle sicher, dass der Handle immer geschlossen wird
-            win32file.CloseHandle(handle)
 
         return f"Das Erstelldatum der Datei '{file_path}' wurde erfolgreich auf {new_creation_date} gesetzt."
     except Exception as e:
+
         return f"Fehler beim Setzen des Erstelldatums für '{file_path}': {str(e)}"
+
 
 def delete_directory_contents(directory_path):
     """
