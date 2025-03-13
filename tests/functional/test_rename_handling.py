@@ -3,12 +3,16 @@ test_rename_handling.py
 """
 import os
 import logging
-from modules.msg_generate_new_filename import generate_new_msg_filename, MsgFilenameResult
-from utils.file_handling import (rename_file2, test_file_access2, FileAccessStatus, RenameResult)
+from modules.msg_generate_new_filename import generate_new_msg_filename
+from utils.file_handling import (rename_file2, test_file_access2, FileAccessStatus, set_file_creation_date, set_file_date)
 from modules.msg_handling import create_log_file, log_entry
 from utils.testset_preparation import prepare_test_directory
-from dataclasses import dataclass
-from datetime import datetime  # Stellen Sie sicher, dass nur die Klasse datetime importiert wird
+import datetime
+
+# Konfiguration
+TEST_RUN = True # Testlauf ohne Dateioperationen aktivieren
+INIT_TESTDATA = True # Testdaten initialisieren
+SET_FILEDATE = True # Dateidatum setzen
 
 # Log-Verzeichnis und Basisname für Logdateien festlegen
 LOG_DIRECTORY = r'D:\Dev\pycharm\MSGFileRenamer\logs'
@@ -74,6 +78,11 @@ if __name__ == '__main__':
     msg_file_doublette_count = 0
     msg_file_doublette_deleted_count = 0
     msg_file_doublette_deleted_problem_count = 0
+    msg_file_file_creation_date_count = 0
+    msg_file_creation_date_problem_count = 0
+    msg_file_modification_date_count = 0
+    msg_file_modification_date_problem_count = 0
+    msg_file_same_name_count = 0
 
     # Durchsuchen des Zielverzeichnisses nach MSG-Dateien
     # pathname = Verzeichnisname, dirs = Unterverzeichnisse, files = List von Dateien
@@ -120,39 +129,77 @@ if __name__ == '__main__':
                         old_path_and_file_name = path_and_file_name
                         new_path_and_file_name = os.path.join(pathname, new_msg_filename_collection.new_truncated_msg_filename)
 
-                        # Prüfen, ob die Datei mit neuem Namen bereits existiert, also Doublette
-                        if os.path.exists(new_path_and_file_name):
-                            print(f"Datei ist eine Doublette: '{filename}'")
-                            logging.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
-                            msg_file_doublette_count += 1  # Erfolgszähler erhöhen
-
-                            # Versuche Doublette zu löschen
-                            try:
-                                os.remove(old_path_and_file_name)  # Versuche, die Datei zu löschen
-                                print(f"Doublette gelöscht: '{filename}'")
-                                logging.debug(f"Doublette gelöscht: '{filename}'")  # Debugging-Ausgabe: Log-File
-                                msg_file_doublette_deleted_count += 1  # Löschzähler erhöhen
-                            except Exception as e:
-                                print(f"Doublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")
-                                logging.error(f"Doublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")  # Debugging-Ausgabe: Log-File
-                                msg_file_doublette_deleted_problem_count += 1  # Problemzähler erhöhen
+                        # Prüfen, ob Alter und neuer Name gleich, dann keine Änderung erforderlich
+                        if old_path_and_file_name == new_path_and_file_name:
+                            print(f"Alter und neuer Dateiname sind gleich: '{filename}'")
+                            logging.debug(f"Alter und neuer Dateiname sind gleich: '{filename}'")  # Debugging-Ausgabe: Log-File
+                            msg_file_same_name_count += 1  # Erfolgszähler erhöhen
                         else:
-                            # Umbenennen der MSG-Datei
-                            rename_msg_file_result = rename_file2(old_path_and_file_name, new_path_and_file_name)
-
-                            # rename_msg_file_result gleich "Datei erfolgreich umbenannt"
-                            if rename_msg_file_result.SUCCESS:
-                                print(f"Erfolgreiche Umbenennung der Datei: '{filename}'")
-                                logging.debug(f"Erfolgreiche Umbenennung der Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
-                                msg_file_renamed_count += 1  # Erfolgszähler erhöhen
-                            elif rename_msg_file_result.DESTINATION_EXISTS:
+                            # Prüfen, ob die Datei mit neuem Namen bereits existiert, also Doublette
+                            if os.path.exists(new_path_and_file_name):
                                 print(f"Datei ist eine Doublette: '{filename}'")
                                 logging.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
                                 msg_file_doublette_count += 1  # Erfolgszähler erhöhen
+
+                                # Versuche Doublette zu löschen
+                                try:
+                                    os.remove(old_path_and_file_name)  # Versuche, die Datei zu löschen
+                                    print(f"Doublette gelöscht: '{filename}'")
+                                    logging.debug(f"Doublette gelöscht: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                    msg_file_doublette_deleted_count += 1  # Löschzähler erhöhen
+                                except Exception as e:
+                                    print(f"Doublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")
+                                    logging.error(f"Doublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")  # Debugging-Ausgabe: Log-File
+                                    msg_file_doublette_deleted_problem_count += 1  # Problemzähler erhöhen
                             else:
-                                print(f"Umbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")
-                                logging.debug(f"Umbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")  # Debugging-Ausgabe: Log-File
-                                msg_file_problem_count += 1  # Problemzähler erhöhen
+                                # Umbenennen der MSG-Datei
+                                rename_msg_file_result = rename_file2(old_path_and_file_name, new_path_and_file_name)
+
+                                # rename_msg_file_result gleich "Datei erfolgreich umbenannt"
+                                if rename_msg_file_result.SUCCESS:
+                                    print(f"Erfolgreiche Umbenennung der Datei: '{filename}'")
+                                    logging.debug(f"Erfolgreiche Umbenennung der Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                    msg_file_renamed_count += 1  # Erfolgszähler erhöhen
+
+                                    # Setze das Erstelldatum auf das Versanddatum
+                                    if new_msg_filename_collection.datetime_stamp != "Unbekannt":
+                                        # Überprüfen, ob datetime_stamp ein datetime-Objekt ist
+                                        if isinstance(new_msg_filename_collection.datetime_stamp, datetime.datetime):
+                                            # Konvertiere das datetime-Objekt in einen String im richtigen Format
+                                            datetime_stamp_str = new_msg_filename_collection.datetime_stamp.strftime("%Y-%m-%d %H:%M:%S")
+                                        else:
+                                            datetime_stamp_str = new_msg_filename_collection.datetime_stamp  # Annehmen, dass es bereits ein String ist
+
+                                        # Jetzt das Erstellungsdatum auf das Versanddatum setzen
+                                        set_creation_result = set_file_creation_date(new_path_and_file_name, datetime_stamp_str)
+                                        if not set_creation_result.startswith("Fehler"):
+                                            msg_file_file_creation_date_count += 1
+                                            print(f"Erfolgreiche Änderung des Erstellungsdatum der Datei: '{filename}'")
+                                            logging.debug(f"Erfolgreiche Änderung des Erstellungsdatum der Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                        else:
+                                            msg_file_creation_date_problem_count += 1
+                                            print(f"Fehler beim Ändern des Erstellungsdatum der Datei: '{filename}'")
+                                            logging.error(f"Fehler beim Ändern des Erstellungsdatum der Datei: '{filename}' wegen {set_creation_result}")  # Debugging-Ausgabe: Log-File
+
+                                        # Jetzt das Änderungsdatum auf das gleiche Datum
+                                        set_modification_result = set_file_date(new_path_and_file_name, datetime_stamp_str)
+                                        if not set_creation_result.startswith("Fehler"):
+                                            msg_file_modification_date_count += 1
+                                            print(f"Erfolgreiche Änderung des Änderungsdatums der Datei: '{filename}'")
+                                            logging.debug(f"Erfolgreiche Änderung des Änderungsdatums der Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                        else:
+                                            msg_file_modification_date_problem_count += 1
+                                            print(f"Fehler beim Ändern des Änderungsdatums der Datei: '{filename}'")
+                                            logging.error(f"Fehler beim Ändern des Änderungsdatums der Datei: '{filename}' wegen {set_creation_result}")  # Debugging-Ausgabe: Log-File
+
+                                elif rename_msg_file_result.DESTINATION_EXISTS:
+                                    print(f"Datei ist eine Doublette: '{filename}'")
+                                    logging.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                    msg_file_doublette_count += 1  # Erfolgszähler erhöhen
+                                else:
+                                    print(f"Umbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")
+                                    logging.debug(f"Umbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")  # Debugging-Ausgabe: Log-File
+                                    msg_file_problem_count += 1  # Problemzähler erhöhen
 
                 elif FileAccessStatus.READABLE in access_result:
                     print(f"\tNur lesender Zugriff auf die Datei möglich.")
@@ -196,3 +243,8 @@ if __name__ == '__main__':
     print(f"Anzahl gefundener Doubletten: {msg_file_doublette_count}")
     print(f"Anzahl gelöschter Doubletten: {msg_file_doublette_deleted_count}")
     print(f"Anzahl nicht gelöschter Doubletten: {msg_file_doublette_deleted_problem_count}")
+    print(f"Anzahl geänderter Erstellungsdaten: {msg_file_file_creation_date_count}")
+    print(f"Anzahl nicht geänderter Erstellungsdaten: {msg_file_creation_date_problem_count}")
+    print(f"Anzahl geänderter Änderungsdaten: {msg_file_modification_date_count}")
+    print(f"Anzahl nicht geänderter Änderungsdaten: {msg_file_modification_date_problem_count}")
+    print(f"Alter und neuer Dateiname sind gleich: {msg_file_same_name_count}")
