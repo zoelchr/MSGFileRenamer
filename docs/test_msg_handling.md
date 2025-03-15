@@ -12,6 +12,7 @@ Die Tests umfassen:
   - `get_sender_msg_file`: Überprüft, ob die Absender-E-Mail-Adresse korrekt zurückgegeben wird.
   - `get_subject_msg_file`: Validiert, dass der Betreff der Nachricht korrekt extrahiert wird.
   - `get_date_sent_msg_file`: Stellt sicher, dass das Versanddatum korrekt abgerufen wird.
+  - `get_subject_msg_file2`: Überprüft die korrekte Rückgabe des Betreffs aus einer MSG-Datei.
 
 - **Validierung der Funktionalität**:
   - `parse_sender_msg_file`: Testet die korrekte Extraktion von Senderinformationen aus dem Sender-String.
