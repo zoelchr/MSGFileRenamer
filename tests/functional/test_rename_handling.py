@@ -4,7 +4,7 @@ test_rename_handling.py
 import os
 import logging
 from modules.msg_generate_new_filename import generate_new_msg_filename
-from utils.file_handling import (rename_file2, test_file_access2, FileAccessStatus, set_file_creation_date, set_file_date)
+from utils.file_handling import (rename_file2, test_file_access2, FileAccessStatus, set_file_creation_date2, set_file_modification_date2, FileOperationResult)
 from modules.msg_handling import create_log_file, log_entry
 from utils.testset_preparation import prepare_test_directory
 import datetime
@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
                     # Neuen Datenamen erzeugen
                     new_msg_filename_collection = generate_new_msg_filename(path_and_file_name)
-                    print(f"\tErgebnis von 'new_msg_filename_collection': '{new_msg_filename_collection}'")
+                    #print(f"\tErgebnis von 'new_msg_filename_collection': '{new_msg_filename_collection}'")
 
                     # Wenn Dateiname gekürzt wurde, dann Zähler erhöhen
                     if new_msg_filename_collection.is_msg_filename_truncated: msg_file_shorted_name_count += 1
@@ -171,26 +171,30 @@ if __name__ == '__main__':
                                             datetime_stamp_str = new_msg_filename_collection.datetime_stamp  # Annehmen, dass es bereits ein String ist
 
                                         # Jetzt das Erstellungsdatum auf das Versanddatum setzen
-                                        set_creation_result = set_file_creation_date(new_path_and_file_name, datetime_stamp_str)
-                                        if not set_creation_result.startswith("Fehler"):
+                                        set_creation_result = set_file_creation_date2(new_path_and_file_name, datetime_stamp_str)
+                                        if set_creation_result == FileOperationResult.SUCCESS:
                                             msg_file_file_creation_date_count += 1
-                                            print(f"Erfolgreiche Änderung des Erstellungsdatum der Datei: '{filename}'")
-                                            logging.debug(f"Erfolgreiche Änderung des Erstellungsdatum der Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                            print(f"\tNeues Erstellungsdatum für '{filename}' erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
+                                            logging.debug(f"Neues Erstellungsdatum für '{filename}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
                                         else:
                                             msg_file_creation_date_problem_count += 1
-                                            print(f"Fehler beim Ändern des Erstellungsdatum der Datei: '{filename}'")
-                                            logging.error(f"Fehler beim Ändern des Erstellungsdatum der Datei: '{filename}' wegen {set_creation_result}")  # Debugging-Ausgabe: Log-File
+                                            print(
+                                                f"\tFehler beim Setzen des Erstellungsdatum für '{filename}': '{set_creation_result}'")  # Ausgabe des Ergebnisses
+                                            logging.debug(
+                                                f"Fehler beim Setzen des Erstellungsdatum für '{filename}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
 
-                                        # Jetzt das Änderungsdatum auf das gleiche Datum
-                                        set_modification_result = set_file_date(new_path_and_file_name, datetime_stamp_str)
-                                        if not set_creation_result.startswith("Fehler"):
+                                        # Setze das Änderungsdatum auf das Versanddatum
+                                        set_modification_result = set_file_modification_date2(new_path_and_file_name, datetime_stamp_str)
+                                        if set_modification_result == FileOperationResult.SUCCESS:
                                             msg_file_modification_date_count += 1
-                                            print(f"Erfolgreiche Änderung des Änderungsdatums der Datei: '{filename}'")
-                                            logging.debug(f"Erfolgreiche Änderung des Änderungsdatums der Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                            print(f"\tNeues Änderungsdatum für '{filename}' erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
+                                            logging.debug(f"Neues Änderungsdatum für '{filename}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
                                         else:
                                             msg_file_modification_date_problem_count += 1
-                                            print(f"Fehler beim Ändern des Änderungsdatums der Datei: '{filename}'")
-                                            logging.error(f"Fehler beim Ändern des Änderungsdatums der Datei: '{filename}' wegen {set_creation_result}")  # Debugging-Ausgabe: Log-File
+                                            print(
+                                                f"\tFehler beim Setzen des Änderungsdatum für '{filename}': '{set_creation_result}'")  # Ausgabe des Ergebnisses
+                                            logging.debug(
+                                                f"Fehler beim Setzen des Änderungsdatum für '{filename}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
 
                                 elif rename_msg_file_result.DESTINATION_EXISTS:
                                     print(f"Datei ist eine Doublette: '{filename}'")

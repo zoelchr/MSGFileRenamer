@@ -7,16 +7,30 @@ Löschen von Dateien und Verzeichnissen sowie zum Kopieren von Inhalten zwischen
 Zusätzlich ermöglicht es das Setzen von Erstellungs- und Änderungsdaten für Dateien.
 
 Funktionen:
-- test_file_access(file_path): Testet den Lese- und Schreibzugriff auf eine Datei.
-- rename_file(current_name, new_name, retries=3, delay_ms=1000): Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
-- delete_file(file_path, retries=3, delay_ms=1000): Löscht eine Datei und prüft die erfolgreiche Löschung.
-- sanitize_filename(filename): Ersetzt ungültige Zeichen durch Unterstriche.
-- format_datetime_stamp(datetime_stamp, format_string): Formatiert einen Zeitstempel in das angegebene Format.
-- set_file_date(file_path, new_date): Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert.
-- set_file_creation_date(file_path, new_creation_date): Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert.
-- delete_directory_contents(directory_path): Löscht den gesamten Inhalt eines angegebenen Verzeichnisses.
 - copy_directory_contents(source_directory_path, target_directory_path): Kopiert den gesamten Inhalt eines Quellverzeichnisses in ein Zielverzeichnis.
+- create_log_file(base_name, directory, table_header): Erstellt ein Logfile im Excel-Format mit einem Zeitstempel im Namen.
+- delete_directory_contents(directory_path): Löscht den gesamten Inhalt eines angegebenen Verzeichnisses.
+- delete_file(file_path, retries=3, delay_ms=1000): Löscht eine Datei und prüft die erfolgreiche Löschung.
+- delete_file2(file_path: str, retries=1, delay_ms=200) -> FileOperationResult: Löscht eine Datei und gibt den Status zurück.
+- format_datetime_stamp(datetime_stamp, format_string): Formatiert einen Zeitstempel in das angegebene Format.
+- get_msg_object(msg_file): Öffnet eine MSG-Datei und gibt ein Dictionary mit dem MSG-Objekt und dem Status zurück.
+- get_msg_object2(msg_file: str) -> dict: Öffnet eine MSG-Datei, extrahiert relevante Daten und gibt sie als Dictionary zurück.
+- load_known_senders(file_path): Lädt bekannte Sender aus einer CSV-Datei.
+- rename_file(current_name, new_name, retries=3, delay_ms=1000): Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
+- rename_file2(current_name: str, new_name: str, retries=1, delay_ms=200) -> FileOperationResult: Benennt eine Datei um und gibt den Status zurück.
+- sanitize_filename(filename: str) -> str: Ersetzt ungültige Zeichen durch Unterstriche.
+- set_file_creation_date(file_path, new_creation_date): Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert.
+- set_file_creation_date2(file_path: str, new_creation_date: str) -> FileOperationResult: Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert und gibt den Status zurück.
+- set_file_date(file_path, new_date): Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert.
+- set_file_date2(file_path: str, new_date: str) -> FileOperationResult: Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert und gibt den Status zurück.
+- test_file_access(file_path: str) -> dict: Testet den Lese- und Schreibzugriff auf eine Datei.
+- test_read_access(file_path: str) -> bool: Überprüft, ob Lesezugriff auf die angegebene Datei möglich ist.
+- test_write_access(file_path: str) -> bool: Überprüft, ob Schreibzugriff auf die angegebene Datei möglich ist.
+
+Verwendung:
+Importieren Sie dieses Modul in Ihr Skript, um die oben genannten Funktionen zur Datei- und Verzeichnisverwaltung zu nutzen.
 """
+
 
 import os
 import time
@@ -29,6 +43,8 @@ import datetime
 import logging
 from enum import Enum
 
+logger = logging.getLogger(__name__)
+
 class FileAccessStatus(Enum):
     READABLE = "File is readable"
     WRITABLE = "File is writable"
@@ -39,7 +55,7 @@ class FileAccessStatus(Enum):
     UNKNOWN_ERROR = "Unknown error"
     UNKNOWN = "Status is unkown"
 
-class RenameResult(Enum):
+class FileOperationResult(Enum):
     SUCCESS = "Success"
     FILE_NOT_FOUND = "File not found"
     DESTINATION_EXISTS = "Destination file already exists"
@@ -48,15 +64,39 @@ class RenameResult(Enum):
     INVALID_FILENAME1 = "Source is a file and destination is a directory"
     INVALID_FILENAME2 = "Part of the path is not a directory"
     UNKNOWN_ERROR = "Unknown error"
-
-logger = logging.getLogger(__name__)
+    VALUE_ERROR = "Value error"
+    ERROR = "Error"
 
 class FileHandle:
-    def __init__(self, file_path):
+    """
+    Kontextmanager für den Zugriff auf eine Datei mit Windows-API.
+
+    Diese Klasse ermöglicht das sichere Öffnen und Schließen von Dateien unter Verwendung der Windows-API.
+    Sie implementiert die Methoden __enter__ und __exit__, um sicherzustellen, dass die Datei
+    ordnungsgemäß geöffnet und geschlossen wird, wenn sie in einem with-Block verwendet wird.
+
+    Attribute:
+    file_path (str): Der Pfad zur Datei, die geöffnet werden soll.
+    handle (HANDLE): Der Handle für die geöffnete Datei, der von der Windows-API zurückgegeben wird.
+    """
+
+    def __init__(self, file_path: str):
+        """
+        Initialisiert ein neues FileHandle-Objekt.
+
+        Parameter:
+        file_path (str): Der Pfad zur Datei, die geöffnet werden soll.
+        """
         self.file_path = file_path
-        self.handle = None
+        self.handle = None  # Handle wird initial auf None gesetzt
 
     def __enter__(self):
+        """
+        Öffnet die Datei und gibt den Handle zurück.
+
+        Rückgabewert:
+        HANDLE: Der Handle für die geöffnete Datei.
+        """
         self.handle = win32file.CreateFile(
             self.file_path,
             win32con.GENERIC_WRITE,
@@ -66,52 +106,20 @@ class FileHandle:
             win32con.FILE_ATTRIBUTE_NORMAL,
             None
         )
-        return self.handle
+        return self.handle  # Gibt den Handle zurück, um ihn im with-Block verwenden zu können
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Schließt den Datei-Handle, wenn der with-Block verlassen wird.
+
+        Parameter:
+        exc_type: Der Typ der Ausnahme, falls eine Ausnahme aufgetreten ist.
+        exc_val: Der Wert der Ausnahme, falls eine Ausnahme aufgetreten ist.
+        exc_tb: Der Traceback der Ausnahme, falls eine Ausnahme aufgetreten ist.
+        """
         if self.handle is not None:
-            win32file.CloseHandle(self.handle)
+            win32file.CloseHandle(self.handle)  # Schließt den Handle, um Ressourcen freizugeben
 
-def test_read_access(file_path):
-    try:
-        with open(file_path, 'r'):
-            logger.debug(f"Auf die Datei ist Lesezugriff möglich: {file_path}")
-            return True
-    except Exception as e:
-        logger.debug(f"Auf die Datei ist kein Lesezugriff möglich: {file_path} (Exception-Objekt: {e})")
-        return False
-
-def test_write_access(file_path):
-    try:
-        with open(file_path, 'a'):
-            return True
-    except Exception:
-        return False
-
-def test_file_access(file_path):
-    """
-    Test ob der lesende und schreibende Zugriff auf eine Datei möglich ist.
-
-    Rückgabewert:
-    dict: Ein Dictionary mit dem Zugriffsergebnis und einer Detailinformation.
-    """
-    access_result = {}
-    try:
-        # Teste Lesezugriff
-        with open(file_path, 'r'):
-            try:
-                # Teste Schreibzugriff
-                with open(file_path, 'a'):
-                    access_result['status'] = "Zugriff: Lesen und Schreiben möglich"
-            except Exception:
-                logger.debug(f"Auf die Datei ist nur lesender Zugriff möglich: {file_path}")  # Debugging-Ausgabe: Log-File
-                access_result['status'] = "Zugriff: Nur Lesen möglich"
-    except Exception as e:
-        logger.debug(f"Auf die Datei ist kein Zugriff möglich: {file_path} (Exception-Objekt: {e})")  # Debugging-Ausgabe: Log-File
-        access_result['status'] = "Zugriff: Nicht möglich"
-        access_result['detail'] = str(e)
-
-    return access_result
 
 def test_file_access2(file_path: str) -> list[FileAccessStatus]:
     """Überprüft den Datei-Zugriffsstatus und gibt eine Liste von FileAccessStatus-Enums zurück.
@@ -162,45 +170,7 @@ def test_file_access2(file_path: str) -> list[FileAccessStatus]:
         return [FileAccessStatus.UNKNOWN_ERROR]
 
 
-def rename_file(current_name, new_name, retries=1, delay_ms=200):
-    """
-    Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
-
-    Parameter:
-    current_name (str): Der aktuelle Dateiname.
-    new_name (str): Der neue Dateiname.
-    retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 1).
-    delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 200).
-
-    Rückgabewert:
-    str: Erfolgsmeldung oder Fehlermeldung.
-    """
-    attempt = 0
-    last_error = None  # Variable für den letzten Fehler
-
-    while attempt < retries:
-        try:
-            logging.debug(f"Aktueller Dateiname: {current_name}")  # Debugging-Ausgabe: Log-File
-            logging.debug(f"Neuer Dateiname: {new_name}")  # Debugging-Ausgabe: Log-File
-            os.rename(current_name, new_name)
-            return "Datei erfolgreich umbenannt."
-        except FileNotFoundError:
-            print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
-            logging.debug(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Log-File
-            last_error = "Datei nicht gefunden."
-        except PermissionError:
-            print(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Console
-            logging.debug(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Log-File
-            last_error = "Berechtigungsfehler."
-        except Exception as e:
-            last_error = f"Fehler bei Umbenennung: {str(e)}"  # Speichere den Fehler
-
-        attempt += 1
-        time.sleep(delay_ms / 1000)  # Wartezeit in Sekunden
-
-    return f"{last_error}: Nach {retries} Versuchen fehlgeschlagen."
-
-def rename_file2(current_name, new_name, retries=1, delay_ms=200) -> RenameResult:
+def rename_file2(current_name: str, new_name: str, retries=1, delay_ms=200) -> FileOperationResult:
     """
     Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
     Neue verbesserte Version
@@ -222,29 +192,29 @@ def rename_file2(current_name, new_name, retries=1, delay_ms=200) -> RenameResul
             logging.debug(f"Aktueller Dateiname: {current_name}")  # Debugging-Ausgabe: Log-File
             logging.debug(f"Neuer Dateiname: {new_name}")  # Debugging-Ausgabe: Log-File
             os.rename(current_name, new_name)
-            rename_file_result = RenameResult.SUCCESS  # Erfolgreiche Umbenennung
+            rename_file_result = FileOperationResult.SUCCESS  # Erfolgreiche Umbenennung
         except FileNotFoundError:
             print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Log-File
-            rename_file_result = RenameResult.FILE_NOT_FOUND  # Datei nicht gefunden
+            rename_file_result = FileOperationResult.FILE_NOT_FOUND  # Datei nicht gefunden
         except PermissionError:
             print(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Log-File
-            rename_file_result = RenameResult.PERMISSION_DENIED  # Berechtigungsfehler
+            rename_file_result = FileOperationResult.PERMISSION_DENIED  # Berechtigungsfehler
         except FileExistsError:
             print(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Log-File
-            return RenameResult.DESTINATION_EXISTS
+            return FileOperationResult.DESTINATION_EXISTS
         except IsADirectoryError:
             print(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Console
             logging.error(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Log-File
-            return RenameResult.INVALID_FILENAME1
+            return FileOperationResult.INVALID_FILENAME1
         except NotADirectoryError:
             print(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Log-File
-            return RenameResult.INVALID_FILENAME2
+            return FileOperationResult.INVALID_FILENAME2
         except Exception as e:
-            rename_file_result = RenameResult.UNKNOWN_ERROR  # Unbekannter Fehler
+            rename_file_result = FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
             logging.error(f"Fehler bei Umbenennung: {str(e)}")  # Debugging-Ausgabe: Log-File
 
         attempt += 1
@@ -252,36 +222,60 @@ def rename_file2(current_name, new_name, retries=1, delay_ms=200) -> RenameResul
 
     return rename_file_result
 
-def delete_file(file_path, retries=1, delay_ms=200):
+
+def delete_file2(file_path: str, retries=1, delay_ms=200) -> FileOperationResult:
     """
     Löscht eine Datei und prüft die erfolgreiche Löschung.
 
+    Diese Funktion versucht, die angegebene Datei zu löschen.
+    Bei einem Misserfolg wird die Löschung nach einer konfigurierbaren Anzahl von Versuchen wiederholt.
+    Der Benutzer kann auch eine Verzögerung zwischen den Versuchen angeben.
+
     Parameter:
     file_path (str): Der Pfad zur Datei, die gelöscht werden soll.
-    retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 3).
-    delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 1000).
+    retries (int): Die Anzahl der Wiederholungen bei Misserfolg (Standard: 1).
+    delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 200).
 
     Rückgabewert:
-    str: Erfolgsmeldung oder Fehlermeldung.
+    FileOperationResult: Ein Enum-Wert, der den Erfolg oder Fehler beschreibt.
+
+    Beispiel:
+        result = delete_file2('example.txt')
+        if result == FileOperationResult.SUCCESS:
+            print("Datei erfolgreich gelöscht.")
     """
-    attempt = 0
+    attempt = 0  # Zähler für die Anzahl der Versuche
     last_error = None  # Variable für den letzten Fehler
 
     while attempt < retries:
         try:
-            os.remove(file_path)
+            os.remove(file_path)  # Versuche, die Datei zu löschen
+
             # Überprüfen, ob die Datei tatsächlich gelöscht wurde
             if not os.path.exists(file_path):
-                return f"Datei erfolgreich gelöscht: {file_path}"
+                return FileOperationResult.SUCCESS  # Erfolgreich gelöscht
+
+        except FileNotFoundError:
+            last_error = f"Die Datei '{file_path}' wurde nicht gefunden."  # Fehlerbeschreibung
+            break  # Beende die Schleife, da die Datei nicht existiert
+        except PermissionError:
+            last_error = f"Keine Berechtigung, um die Datei '{file_path}' zu löschen."  # Fehlerbeschreibung
+            break  # Beende die Schleife, da keine Berechtigung besteht
         except Exception as e:
-            last_error = e  # Speichere den Fehler
-            attempt += 1
+            last_error = str(e)  # Speichere den Fehler
+            attempt += 1  # Erhöhe den Versuchszähler
             time.sleep(delay_ms / 1000)  # Wartezeit in Sekunden
 
-    return f"Fehler: Löschen der Datei '{file_path}' nach {retries} Versuchen fehlgeschlagen: {str(last_error)}"
+    # Rückgabe im Falle von Misserfolg nach allen Versuchen
+    if last_error:
+        logger.error(f"Datei '{file_path}' konnte nicht gelöscht werden: {last_error}")  # Protokolliere den letzten Fehler
+        return FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
+    else:
+        logger.error(f"Datei '{file_path}' konnte nicht gelöscht werden.")
+        return FileOperationResult.UNKNOWN_ERROR  # Rückgabe, wenn die Datei nicht gelöscht werden konnte
 
 
-def sanitize_filename(filename):
+def sanitize_filename(filename: str) ->str:
     """
     Ersetzt ungültige Zeichen im Dateinamen durch Unterstriche.
 
@@ -293,7 +287,8 @@ def sanitize_filename(filename):
     """
     return re.sub(r'[<>:"/\\|?*]', '_', filename)
 
-def format_datetime_stamp(datetime_stamp, format_string):
+
+def format_datetime_stamp(datetime_stamp, format_string: str) -> str:
     """
     Formatiert einen Zeitstempel in das angegebene Format.
 
@@ -314,49 +309,96 @@ def format_datetime_stamp(datetime_stamp, format_string):
     # Formatieren des datetime-Objekts gemäß dem bereitgestellten Format
     return dt.strftime(format_string)
 
-def set_file_date(file_path, new_date):
+
+def set_file_modification_date2(file_path: str, new_date: str) -> FileOperationResult:
     """
     Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert.
 
+    Diese Funktion konvertiert das angegebene Änderungsdatum in einen Zeitstempel
+    und verwendet die Windows-API, um das Änderungsdatum der angegebenen Datei zu ändern.
+    Bei Erfolg wird ein Status von SUCCESS zurückgegeben. Bei Fehlern wird ein entsprechender
+    Statuscode zurückgegeben.
+
     Parameter:
-    file_path (str): Der Pfad zur Datei.
-    new_date (str): Das neue Datum im Format 'YYYY-MM-DD HH:MM:SS'.
+    file_path (str): Der Pfad zur Datei, deren Änderungsdatum geändert werden soll.
+    new_date (str): Das neue Änderungsdatum im Format 'YYYY-MM-DD HH:MM:SS'.
 
     Rückgabewert:
-    str: Erfolgsmeldung oder Fehlermeldung.
+    FileOperationResult: Ein Enum-Wert, der den Erfolg oder Fehler beschreibt.
+
+    Beispiel:
+        result = set_file_set_file_modification_date2('example.txt', '2023-11-08 12:00:00')
+        if result == FileOperationResult.SUCCESS:
+            print("Änderungsdatum erfolgreich gesetzt.")
     """
+
     try:
         # Konvertiere das Datum in einen Zeitstempel
         timestamp = time.mktime(datetime.datetime.strptime(new_date, '%Y-%m-%d %H:%M:%S').timetuple())
-        os.utime(file_path, (timestamp, timestamp))
-        return f"Das Datum der Datei '{file_path}' wurde erfolgreich auf {new_date} gesetzt."
-    except Exception as e:
-        return f"Fehler beim Setzen des Datums für '{file_path}': {str(e)}"
+        os.utime(file_path, (timestamp, timestamp))  # Setze das Änderungsdatum der Datei
+        return FileOperationResult.SUCCESS  # Erfolgreich gesetzt
 
-def set_file_creation_date(file_path, new_creation_date):
+    except FileNotFoundError:
+        logger.error(f"Die Datei '{file_path}' wurde nicht gefunden.")  # Protokolliere den Fehler
+        return FileOperationResult.FILE_NOT_FOUND  # Datei nicht gefunden
+
+    except PermissionError:
+        logger.error(f"Keine Berechtigung, um das Änderungsdatum der Datei '{file_path}' zu ändern.")  # Protokolliere den Fehler
+        return FileOperationResult.PERMISSION_DENIED  # Berechtigungsfehler
+
+    except ValueError:
+        logger.error(f"Ungültiges Datumsformat für '{new_date}'.")  # Protokolliere den Fehler
+        return FileOperationResult.VALUE_ERROR  # Ungültiger Wert
+
+    except Exception as e:
+        logger.error(f"Allgemeiner Fehler beim Setzen des Änderungsdatums für '{file_path}': {str(e)}")  # Protokolliere den Fehler
+        return FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
+
+
+def set_file_creation_date2(file_path: str, new_creation_date: str) -> FileOperationResult:
     """
     Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert.
 
+    Diese Funktion konvertiert das angegebene Erstelldatum in einen Zeitstempel
+    und verwendet die Windows-API, um das Erstelldatum der angegebenen Datei zu ändern.
+    Bei Erfolg wird ein Status von SUCCESS zurückgegeben. Bei Fehlern wird ein entsprechender
+    Statuscode zurückgegeben.
+
     Parameter:
-    file_path (str): Der Pfad zur Datei.
+    file_path (str): Der Pfad zur Datei, deren Erstelldatum geändert werden soll.
     new_creation_date (str): Das neue Erstelldatum im Format 'YYYY-MM-DD HH:MM:SS'.
 
     Rückgabewert:
-    str: Erfolgsmeldung oder Fehlermeldung.
+    FileOperationResult: Ein Enum-Wert, der den Erfolg oder Fehler beschreibt.
     """
+
     try:
         # Konvertiere das Datum in einen Zeitstempel
         timestamp = time.mktime(time.strptime(new_creation_date, '%Y-%m-%d %H:%M:%S'))
-        creation_time = pywintypes.Time(timestamp)
+        creation_time = pywintypes.Time(timestamp)  # Erstelle ein Zeitobjekt für die Windows-API
 
+        # Verwende den Kontextmanager, um die Datei sicher zu öffnen
         with FileHandle(file_path) as handle:
-            # Setze das Erstelldatum
+            # Setze das Erstelldatum der Datei
             win32file.SetFileTime(handle, creation_time, None, None)
 
-        return f"Das Erstelldatum der Datei '{file_path}' wurde erfolgreich auf {new_creation_date} gesetzt."
-    except Exception as e:
+        return FileOperationResult.SUCCESS  # Erfolgreich gesetzt
 
-        return f"Fehler beim Setzen des Erstelldatums für '{file_path}': {str(e)}"
+    except FileNotFoundError:
+        logger.error(f"Die Datei '{file_path}' wurde nicht gefunden.")
+        return FileOperationResult.FILE_NOT_FOUND  # Datei nicht gefunden
+
+    except PermissionError:
+        logger.error(f"Keine Berechtigung, um das Erstelldatum der Datei '{file_path}' zu ändern.")
+        return FileOperationResult.PERMISSION_DENIED  # Berechtigungsfehler
+
+    except ValueError:
+        logger.error(f"Ungültiges Datumsformat für '{new_creation_date}'.")
+        return FileOperationResult.VALUE_ERROR  # Ungültiger Wert
+
+    except Exception as e:
+        logger.error(f"Allgemeiner Fehler beim Setzen des Erstelldatums für '{file_path}': {str(e)}")
+        return FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
 
 
 def delete_directory_contents(directory_path):

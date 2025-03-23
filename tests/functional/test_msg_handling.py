@@ -247,7 +247,7 @@ if __name__ == '__main__':
                     "Betreff": msg_subject,
                     "Bereinigter Betreff": sanitized_subject,
                     "Neuer Filename": new_filename,
-                    "Neuer gekürzter Fielname": new_truncated_path,
+                    "Neuer gekürzter Filename": new_truncated_path,
                     "Neuer Dateipfad": new_file_path,
                     "Nachricht": msg_body,
                     "Gekürzte Nachricht": reduce_result['new_email_text'],
