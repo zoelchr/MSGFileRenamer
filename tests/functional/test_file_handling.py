@@ -26,13 +26,13 @@ import datetime
 from utils.file_handling import (
     FileOperationResult,
     FileAccessStatus,
-    rename_file2,
-    set_file_creation_date2,
-    set_file_modification_date2,
-    test_file_access2,
+    rename_file,
+    set_file_creation_date,
+    set_file_modification_date,
+    test_file_access,
     format_datetime_stamp
 )
-from modules.msg_handling import get_msg_object2, MsgAccessStatus
+from modules.msg_handling import get_msg_object, MsgAccessStatus
 from utils.testset_preparation import prepare_test_directory
 
 # Log-Verzeichnis und Basisname für Logdateien festlegen
@@ -112,7 +112,7 @@ if __name__ == '__main__':
                 logger.debug(f"\nMSG-Datei: {file}") # Debugging-Ausgabe: Console
 
                 # Überprüfen des Lesezugriffs auf die Datei
-                access_result = test_file_access2(file_path)
+                access_result = test_file_access(file_path)
                 print(f"\tErgebnis Zugriffsprüfung: '{[s.value for s in access_result]}'")  # Debugging-Ausgabe: Console
 
                 if FileAccessStatus.WRITABLE in access_result:
@@ -120,7 +120,7 @@ if __name__ == '__main__':
                     logging.debug(f"Lesender und schreibender Zugriff auf die Datei möglich: {file_path}")  # Debugging-Ausgabe: Log-File
 
                     # Auslesen des msg-Objektes
-                    msg_object = get_msg_object2(file_path)
+                    msg_object = get_msg_object(file_path)
 
                     if MsgAccessStatus.SUCCESS in msg_object["status"] and MsgAccessStatus.DATE_MISSING not in msg_object["status"]:
                         datetime_stamp = msg_object['date']
@@ -135,7 +135,7 @@ if __name__ == '__main__':
                         new_file_path = os.path.join(root, new_filename)
 
                         # Umbenennen der Datei
-                        rename_file_result = rename_file2(file_path, new_file_path)
+                        rename_file_result = rename_file(file_path, new_file_path)
 
                         if rename_file_result == FileOperationResult.SUCCESS:
                             print(f"\tErgebnis der Datei-Umbenennung: {rename_file_result}") # Debugging-Ausgabe: Console
@@ -160,7 +160,7 @@ if __name__ == '__main__':
                                     datetime_stamp_str = datetime_stamp  # Annehmen, dass es bereits ein String ist
 
                                 # Setze das Erstelldatum auf das Versanddatum
-                                set_creation_result = set_file_creation_date2(new_file_path, datetime_stamp_str)
+                                set_creation_result = set_file_creation_date(new_file_path, datetime_stamp_str)
                                 if set_creation_result == FileOperationResult.SUCCESS:
                                     print(f"\tNeues Erstellungsdatum für '{file}' erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Neues Erstellungsdatum für '{file}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
@@ -169,7 +169,7 @@ if __name__ == '__main__':
                                     logging.debug(f"Fehler beim Setzen des Erstellungsdatum für '{file}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
 
                                 # Setze das Änderungsdatum auf das Versanddatum
-                                set_modification_result = set_file_modification_date2(new_file_path, datetime_stamp_str)
+                                set_modification_result = set_file_modification_date(new_file_path, datetime_stamp_str)
                                 if set_modification_result == FileOperationResult.SUCCESS:
                                     print(f"\tNeues Änderungsdatum für '{file}' erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Neues Änderungsdatum für '{file}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File

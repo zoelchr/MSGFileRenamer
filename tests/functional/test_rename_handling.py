@@ -1,10 +1,22 @@
 """
 test_rename_handling.py
+
+Dieses Modul führt funktionale Tests für das Umbenennen von MSG-Dateien durch. Es überprüft die Fähigkeit, MSG-Dateien basierend auf ihren Metadaten umzubenennen und protokolliert die Ergebnisse. Das Modul umfasst die Initialisierung von Testdaten, das Einrichten von Logdateien und das Verarbeiten von Dateien in einem Testverzeichnis.
+
+Funktionen und Prozesse:
+- setup_logging(debug=False): Konfiguriert das Logging für Debugging und Informationsausgaben.
+- Hauptprozess: Durchsucht ein Zielverzeichnis nach MSG-Dateien, überprüft den Datei-Zugriff, generiert neue Dateinamen, benennt Dateien um und setzt Erstellungs- und Änderungsdaten.
+- Protokollierung: Erstellt Logeinträge für jede verarbeitete Datei und speichert sie in einer Excel-Logdatei.
+- Zähler: Hält verschiedene Zähler für gefundene, umbenannte, problematische Dateien und andere relevante Metriken.
+
+Verwendung:
+Führen Sie dieses Modul aus, um die Funktionalität des Umbenennens von MSG-Dateien zu testen und die Ergebnisse zu protokollieren. Stellen Sie sicher, dass die Verzeichnisse und Konfigurationen korrekt eingestellt sind, bevor Sie den Testlauf starten.
 """
+
 import os
 import logging
 from modules.msg_generate_new_filename import generate_new_msg_filename
-from utils.file_handling import (rename_file2, test_file_access2, FileAccessStatus, set_file_creation_date2, set_file_modification_date2, FileOperationResult)
+from utils.file_handling import (rename_file, test_file_access, FileAccessStatus, set_file_creation_date, set_file_modification_date, FileOperationResult)
 from modules.msg_handling import create_log_file, log_entry
 from utils.testset_preparation import prepare_test_directory
 import datetime
@@ -47,7 +59,7 @@ if __name__ == '__main__':
     #SOURCE_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\data\sample_files\testset-short'
     SOURCE_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\data\sample_files\testset-long'
     TARGET_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\tests\functional\testdir'
-    DEFAULT_EXCEL_LOG_DIRECTORY = (r"D:\Dev\pycharm\MSGFileRenamer\logs")
+    DEFAULT_EXCEL_LOG_DIRECTORY = r"D:\Dev\pycharm\MSGFileRenamer\logs"
     DEFAULT_EXCEL_LOG_BASE_NAME = 'msg_log'
 
     # Log-Verzeichnis und Basisname für Logdateien festlegen
@@ -105,7 +117,7 @@ if __name__ == '__main__':
                 msg_file_count += 1 # Zähler erhöhen, MSG-Datei gefunden
 
                 # Überprüfen den Schreib- und Lesezugriff auf die MSG-Datei
-                access_result = test_file_access2(path_and_file_name)
+                access_result = test_file_access(path_and_file_name)
 
                 print(f"\tÜberprüfung Zugriff auf aktuelle MSG-Date: {[s.value for s in access_result]}'")  # Debugging-Ausgabe: Console
                 logging.debug(f"\tÜberprüfung Zugriff auf aktuelle MSG-Date: {[s.value for s in access_result]}'")  # Debugging-Ausgabe: Log-File
@@ -117,7 +129,6 @@ if __name__ == '__main__':
 
                     # Neuen Datenamen erzeugen
                     new_msg_filename_collection = generate_new_msg_filename(path_and_file_name)
-                    #print(f"\tErgebnis von 'new_msg_filename_collection': '{new_msg_filename_collection}'")
 
                     # Wenn Dateiname gekürzt wurde, dann Zähler erhöhen
                     if new_msg_filename_collection.is_msg_filename_truncated: msg_file_shorted_name_count += 1
@@ -153,7 +164,7 @@ if __name__ == '__main__':
                                     msg_file_doublette_deleted_problem_count += 1  # Problemzähler erhöhen
                             else:
                                 # Umbenennen der MSG-Datei
-                                rename_msg_file_result = rename_file2(old_path_and_file_name, new_path_and_file_name)
+                                rename_msg_file_result = rename_file(old_path_and_file_name, new_path_and_file_name)
 
                                 # rename_msg_file_result gleich "Datei erfolgreich umbenannt"
                                 if rename_msg_file_result.SUCCESS:
@@ -171,7 +182,7 @@ if __name__ == '__main__':
                                             datetime_stamp_str = new_msg_filename_collection.datetime_stamp  # Annehmen, dass es bereits ein String ist
 
                                         # Jetzt das Erstellungsdatum auf das Versanddatum setzen
-                                        set_creation_result = set_file_creation_date2(new_path_and_file_name, datetime_stamp_str)
+                                        set_creation_result = set_file_creation_date(new_path_and_file_name, datetime_stamp_str)
                                         if set_creation_result == FileOperationResult.SUCCESS:
                                             msg_file_file_creation_date_count += 1
                                             print(f"\tNeues Erstellungsdatum für '{filename}' erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
@@ -184,7 +195,7 @@ if __name__ == '__main__':
                                                 f"Fehler beim Setzen des Erstellungsdatum für '{filename}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
 
                                         # Setze das Änderungsdatum auf das Versanddatum
-                                        set_modification_result = set_file_modification_date2(new_path_and_file_name, datetime_stamp_str)
+                                        set_modification_result = set_file_modification_date(new_path_and_file_name, datetime_stamp_str)
                                         if set_modification_result == FileOperationResult.SUCCESS:
                                             msg_file_modification_date_count += 1
                                             print(f"\tNeues Änderungsdatum für '{filename}' erfolgreich gesetzt.")  # Ausgabe des Ergebnisses

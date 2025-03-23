@@ -34,7 +34,7 @@ from modules.msg_handling import (
     truncate_filename_if_needed,
     reduce_thread_in_msg_message,
     MsgAccessStatus,
-    get_msg_object2
+    get_msg_object
 )
 
 # Importieren von Funktionen aus meinem Modul testset_preparation
@@ -136,7 +136,7 @@ if __name__ == '__main__':
                 logger.debug(f"\nMSG-Datei: {file}") # Debugging-Ausgabe: Console
 
                 # Auslesen des msg-Objektes
-                msg_object = get_msg_object2(file_path)
+                msg_object = get_msg_object(file_path)
 
                 # Prüfen, ob die Datei erfolgreich verarbeitet wurde und der Sender existiert
                 if MsgAccessStatus.SUCCESS in msg_object["status"] and MsgAccessStatus.SENDER_MISSING not in msg_object[
@@ -159,8 +159,8 @@ if __name__ == '__main__':
                     print(f"\tKeine Absender-Email gefunden.") # Debugging-Ausgabe: Console
                     logger.debug(f"Keine Absender-Email gefunden.")  # Debugging-Ausgabe: Log-File
 
-                # Überprüfen, ob eine Sender-Email vorhanden ist
-                if not parsed_sender_email["sender_email"]:  # Nur ausführen, wenn keine Sender-Email gefunden wurde
+                # Überprüfen, ob eine Absender-Email vorhanden ist
+                if not parsed_sender_email["sender_email"]:  # Nur ausführen, wenn keine Absender-Email gefunden wurde
 
                     # Überprüfen, ob der Sendername in der Tabelle der bekannten Sender vorhanden ist
                     known_sender_row = known_senders_df[known_senders_df['sender_name'].str.contains(parsed_sender_email["sender_name"], na=False, regex=False)]
@@ -168,7 +168,7 @@ if __name__ == '__main__':
                         # Wenn der Sendername bekannt ist, die Email-Adresse hinzufügen
                         parsed_sender_email["sender_email"] = known_sender_row.iloc[0]["sender_email"]
                         parsed_sender_email["contains_sender_email"] = True
-                        print(f"\tSender-Email aus Tabelle: {parsed_sender_email['sender_email']}")  # Ausgabe der Sender-Email aus der Tabelle
+                        print(f"\tSender-Email aus Tabelle: {parsed_sender_email['sender_email']}")  # Ausgabe der Absender-Email aus der Tabelle
                         logger.debug(f"Sender-Email aus Tabelle: {parsed_sender_email['sender_email']}")  # Debugging-Ausgabe: Log-File
                     else:
                         parsed_sender_email["contains_sender_email"] = False # Debugging-Ausgabe: Console

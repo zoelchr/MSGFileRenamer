@@ -8,29 +8,18 @@ Zusätzlich ermöglicht es das Setzen von Erstellungs- und Änderungsdaten für 
 
 Funktionen:
 - copy_directory_contents(source_directory_path, target_directory_path): Kopiert den gesamten Inhalt eines Quellverzeichnisses in ein Zielverzeichnis.
-- create_log_file(base_name, directory, table_header): Erstellt ein Logfile im Excel-Format mit einem Zeitstempel im Namen.
 - delete_directory_contents(directory_path): Löscht den gesamten Inhalt eines angegebenen Verzeichnisses.
-- delete_file(file_path, retries=3, delay_ms=1000): Löscht eine Datei und prüft die erfolgreiche Löschung.
-- delete_file2(file_path: str, retries=1, delay_ms=200) -> FileOperationResult: Löscht eine Datei und gibt den Status zurück.
+- delete_file(file_path: str, retries=1, delay_ms=200) -> FileOperationResult: Löscht eine Datei und gibt den Status zurück.
 - format_datetime_stamp(datetime_stamp, format_string): Formatiert einen Zeitstempel in das angegebene Format.
-- get_msg_object(msg_file): Öffnet eine MSG-Datei und gibt ein Dictionary mit dem MSG-Objekt und dem Status zurück.
-- get_msg_object2(msg_file: str) -> dict: Öffnet eine MSG-Datei, extrahiert relevante Daten und gibt sie als Dictionary zurück.
-- load_known_senders(file_path): Lädt bekannte Sender aus einer CSV-Datei.
-- rename_file(current_name, new_name, retries=3, delay_ms=1000): Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
-- rename_file2(current_name: str, new_name: str, retries=1, delay_ms=200) -> FileOperationResult: Benennt eine Datei um und gibt den Status zurück.
+- rename_file(current_name: str, new_name: str, retries=1, delay_ms=200) -> FileOperationResult: Benennt eine Datei um und gibt den Status zurück.
 - sanitize_filename(filename: str) -> str: Ersetzt ungültige Zeichen durch Unterstriche.
-- set_file_creation_date(file_path, new_creation_date): Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert.
-- set_file_creation_date2(file_path: str, new_creation_date: str) -> FileOperationResult: Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert und gibt den Status zurück.
-- set_file_date(file_path, new_date): Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert.
-- set_file_date2(file_path: str, new_date: str) -> FileOperationResult: Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert und gibt den Status zurück.
-- test_file_access(file_path: str) -> dict: Testet den Lese- und Schreibzugriff auf eine Datei.
-- test_read_access(file_path: str) -> bool: Überprüft, ob Lesezugriff auf die angegebene Datei möglich ist.
-- test_write_access(file_path: str) -> bool: Überprüft, ob Schreibzugriff auf die angegebene Datei möglich ist.
+- set_file_creation_date(file_path: str, new_creation_date: str) -> FileOperationResult: Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert und gibt den Status zurück.
+- set_file_modification_date(file_path: str, new_date: str) -> FileOperationResult: Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert und gibt den Status zurück.
+- test_file_access(file_path: str) -> list[FileAccessStatus]: Überprüft den Datei-Zugriffsstatus und gibt eine Liste von FileAccessStatus-Enums zurück.
 
 Verwendung:
 Importieren Sie dieses Modul in Ihr Skript, um die oben genannten Funktionen zur Datei- und Verzeichnisverwaltung zu nutzen.
 """
-
 
 import os
 import time
@@ -121,7 +110,7 @@ class FileHandle:
             win32file.CloseHandle(self.handle)  # Schließt den Handle, um Ressourcen freizugeben
 
 
-def test_file_access2(file_path: str) -> list[FileAccessStatus]:
+def test_file_access(file_path: str) -> list[FileAccessStatus]:
     """Überprüft den Datei-Zugriffsstatus und gibt eine Liste von FileAccessStatus-Enums zurück.
 
     Beispiel:
@@ -170,7 +159,7 @@ def test_file_access2(file_path: str) -> list[FileAccessStatus]:
         return [FileAccessStatus.UNKNOWN_ERROR]
 
 
-def rename_file2(current_name: str, new_name: str, retries=1, delay_ms=200) -> FileOperationResult:
+def rename_file(current_name: str, new_name: str, retries=1, delay_ms=200) -> FileOperationResult:
     """
     Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
     Neue verbesserte Version
@@ -223,7 +212,7 @@ def rename_file2(current_name: str, new_name: str, retries=1, delay_ms=200) -> F
     return rename_file_result
 
 
-def delete_file2(file_path: str, retries=1, delay_ms=200) -> FileOperationResult:
+def delete_file(file_path: str, retries=1, delay_ms=200) -> FileOperationResult:
     """
     Löscht eine Datei und prüft die erfolgreiche Löschung.
 
@@ -310,7 +299,7 @@ def format_datetime_stamp(datetime_stamp, format_string: str) -> str:
     return dt.strftime(format_string)
 
 
-def set_file_modification_date2(file_path: str, new_date: str) -> FileOperationResult:
+def set_file_modification_date(file_path: str, new_date: str) -> FileOperationResult:
     """
     Setzt das Änderungsdatum einer Datei auf einen vorgegebenen Wert.
 
@@ -355,7 +344,7 @@ def set_file_modification_date2(file_path: str, new_date: str) -> FileOperationR
         return FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
 
 
-def set_file_creation_date2(file_path: str, new_creation_date: str) -> FileOperationResult:
+def set_file_creation_date(file_path: str, new_creation_date: str) -> FileOperationResult:
     """
     Setzt das Erstelldatum einer Datei auf einen vorgegebenen Wert.
 

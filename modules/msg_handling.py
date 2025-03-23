@@ -6,19 +6,15 @@ Es bietet Routinen, um verschiedene Informationen wie Absender, Empfänger,
 Betreff und andere relevante Daten zu extrahieren.
 
 Funktionen:
-- get_sender_msg_file(file_path): Gibt die E-Mail-Adresse des Absenders aus einer MSG-Datei zurück.
-- parse_sender_msg_file(sender: str): Analysiert den Sender-String und extrahiert Name und E-Mail.
-- get_subject_msg_file(file_path): Gibt den Betreff der Nachricht aus einer MSG-Datei zurück.
-- get_subject_msg_file2(msg_file): Ruft den Betreff aus einer MSG-Datei ab und gibt das Ergebnis als Dictionary zurück.
-- load_known_senders(file_path): Lädt bekannte Sender aus einer CSV-Datei.
-- get_date_sent_msg_file(file_path): Gibt das Datum der gesendeten Nachricht aus einer MSG-Datei zurück.
-- get_date_sent_msg_file2(msg_file): Ruft das Datum der gesendeten Nachricht aus einer MSG-Datei ab und gibt das Ergebnis als Dictionary zurück.
+- get_msg_object(msg_file): Öffnet eine MSG-Datei, extrahiert relevante Daten und gibt sie als Dictionary zurück.
 - create_log_file(base_name, directory, table_header): Erstellt ein Logfile im Excel-Format mit einem Zeitstempel im Namen.
 - log_entry(log_file_path, entry): Fügt einen neuen Eintrag in das Logfile hinzu.
 - convert_to_utc_naive(datetime_stamp): Konvertiert einen Zeitstempel in ein UTC-naives Datetime-Objekt.
 - format_datetime(datetime_stamp, format_string): Formatiert einen Zeitstempel in das angegebene Format.
 - custom_sanitize_text(encoded_textstring): Bereinigt einen Textstring von unerwünschten Zeichen.
 - truncate_filename_if_needed(file_path, max_length, truncation_marker): Kürzt den Dateinamen, wenn nötig.
+- parse_sender_msg_file(msg_absender_str): Analysiert den Sender-String eines MSG-Files und extrahiert den Namen und die E-Mail-Adresse.
+- load_known_senders(file_path): Lädt bekannte Sender aus einer CSV-Datei.
 - reduce_thread_in_msg_message(email_text, max_older_emails): Reduziert die Anzahl der angehängten älteren E-Mails auf max_older_emails.
 
 Verwendung:
@@ -26,10 +22,9 @@ Importiere die Funktionen aus diesem Modul in deinem Hauptprogramm oder anderen 
 um auf die Metadaten von MSG-Dateien zuzugreifen.
 
 Beispiel:
-    from modules.msg_handling import get_sender_msg_file
-    sender_email = get_sender_msg_file('example.msg')
+    from modules.msg_handling import get_msg_object
+    msg_data = get_msg_object('example.msg')
 """
-from distutils.dep_util import newer
 
 import extract_msg
 import re
@@ -38,14 +33,6 @@ import pandas as pd
 from datetime import datetime
 import logging
 from enum import Enum
-import win32com.client
-import olefile
-from typing import List
-from fpdf import FPDF
-import copy
-
-from cryptography.x509.ocsp import load_der_ocsp_response, load_der_ocsp_request
-from pandas.core.construction import ensure_wrapped_if_datetimelike
 
 logger = logging.getLogger(__name__)
 
@@ -64,14 +51,13 @@ class MsgAccessStatus(Enum):
     UNKNOWN = "Unknown"
     NO_MESSAGE_FOUND = "No message found"
     NO_SENDER_FOUND = "No sender found"
-    # Neue Statuscodes für fehlende Daten
     SUBJECT_MISSING = "Subject missing"
     SENDER_MISSING = "Sender missing"
     DATE_MISSING = "Date missing"
     BODY_MISSING = "Body missing"
     ATTACHMENTS_MISSING = "Attachments missing"
 
-def get_msg_object2(msg_file: str) -> dict:
+def get_msg_object(msg_file: str) -> dict:
     """
     Öffnet eine MSG-Datei, extrahiert relevante Daten und gibt sie als Dictionary zurück.
 
@@ -217,9 +203,6 @@ def create_log_file(base_name, directory, table_header):
     log_file_path = os.path.join(directory, log_file_name)
 
     # Leeres DataFrame mit den gewünschten Spalten erstellen
-    #df = pd.DataFrame(columns=["Fortlaufende Nummer", "Verzeichnisname", "Filename", "Sendername", "Senderemail",
-    #                           "Contains Senderemail", "Timestamp", "Formatierter Timestamp", "Betreff",
-    #                           "Bereinigter Betreff", "Neuer Filename", "Neuer gekürzter Fielname", "Neuer Dateipfad"])
     df = pd.DataFrame(columns=table_header)
 
     try:
@@ -280,8 +263,10 @@ def convert_to_utc_naive(datetime_stamp):
             new_datetime_stamp = datetime_stamp.replace(tzinfo=None)
             logger.debug(f"Konvertierter Zeitstempel in ein UTC-naives Datetime-Objekt: {new_datetime_stamp}")  # Debugging-Ausgabe: Log-File
             return datetime_stamp.replace(tzinfo=None)  # Entfernen der Zeitzone
-            logger.debug(f"Konvertiert einen Zeitstempel in ein UTC-naives Datetime-Objekt: {msg.date}")  # Debugging-Ausgabe: Log-File
+
+        logger.error(f"Kein Zeitstempel zum Konvertieren vorhanden.")  # Debugging-Ausgabe: Log-File
         return datetime_stamp
+
     except Exception as e:
         print(f"Fehler beim Konvertieren des Zeitstempels: {str(e)}") # Debugging-Ausgabe: Console
         logger.error(f"Fehler beim Konvertieren des Zeitstempels: {str(e)}") # Debugging-Ausgabe: Log-File
@@ -446,9 +431,6 @@ def parse_sender_msg_file(msg_absender_str: str) -> dict:
     Rückgabewert:
     dict: Ein Dictionary mit 'sender_name', 'sender_email' und 'contains_sender_email'.
     """
-    sender_name = ""
-    sender_email = ""
-    contains_sender_email = False
 
     # Regulärer Ausdruck für die E-Mail-Adresse
     email_pattern = r'<(.*?)>'
@@ -494,10 +476,9 @@ def reduce_thread_in_msg_message(email_text, max_older_emails=2) -> dict:
     Ältere E-Mails werden anhand der typischen Kopfzeilen (Von, Gesendet, An, Cc, Betreff) erkannt.
 
     :param email_text: Der vollständige Text der E-Mail
-    :param max_older_emails: Die maximale Anzahl an beizubehaltenden alten E-Mails
-    :return: Ein Dictionary mit dem bereinigten E-Mail-Text und der Anzahl der gelöschten alten E-Mails
+    :param max_older_emails: die maximale Anzahl an beizubehaltenden alten E-Mails
+    :return: ein Dictionary mit dem bereinigten E-Mail-Text und der Anzahl der gelöschten alten E-Mails
     """
-    new_email_text = ""
 
     # Regulärer Ausdruck für eine typische E-Mail-Kopfzeile
     email_header_pattern = re.compile(

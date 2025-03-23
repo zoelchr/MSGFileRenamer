@@ -1,23 +1,46 @@
-# Das Modul behinhaltet eine Funktion, der ein Filename übergeben wird und dann mit Hilfe der MSG-Metadaten einen neuen Dateinamen generiert und diesen als Ergbenis zurückliefter
+"""
+msg_generate_new_filename.py
+
+Dieses Modul enthält Funktionen zur Generierung eines neuen Dateinamens für MSG-Dateien basierend auf deren Metadaten.
+Es extrahiert Informationen wie den Absender, das Versanddatum und den Betreff der Nachricht, um einen eindeutigen und informativen Dateinamen zu erstellen.
+
+Funktionen:
+- generate_new_msg_filename(msg_path_and_filename, max_path_length=260): Generiert einen neuen Dateinamen für eine MSG-Datei basierend auf Metadaten wie Absender, Versanddatum und Betreff. Kürzt den Dateinamen, falls er die maximale Pfadlänge überschreitet.
+
+Verwendung:
+Importieren Sie dieses Modul in Ihr Skript, um neue Dateinamen für MSG-Dateien zu generieren, die auf den Metadaten der Dateien basieren.
+"""
 
 import os
 import logging
 from datetime import datetime  # Stellen Sie sicher, dass nur die Klasse datetime importiert wird
 from modules.msg_handling import parse_sender_msg_file, \
     load_known_senders, convert_to_utc_naive, format_datetime, \
-    custom_sanitize_text, truncate_filename_if_needed, MsgAccessStatus, get_msg_object2
-from enum import Enum
+    custom_sanitize_text, truncate_filename_if_needed, MsgAccessStatus, get_msg_object
 from dataclasses import dataclass
 
-class ContainEmailSenderInfo(Enum):
-    FOUND_SENDERSTRING = "Name of email sender found"
-    FOUND_SENDEREMAIL = "Sender email found"
-    FOUND_TABELBASED_SENDEREMAIL = "Sender email found in table"
-    NOT_FOUND = "Sender email not found"
-    UNKNOWN = "Status is unkown"
 
 @dataclass
 class MsgFilenameResult:
+    """
+    MsgFilenameResult
+
+    Diese Datenklasse speichert die Ergebnisse der Dateinamensgenerierung für MSG-Dateien. Sie enthält alle relevanten Informationen, die während des Prozesses extrahiert und verarbeitet wurden.
+
+    Attribute:
+    - datetime_stamp: Der ursprüngliche Zeitstempel des Versanddatums als datetime-Objekt.
+    - formatted_timestamp: Der formatierte Zeitstempel als String, basierend auf dem gewünschten Format.
+    - sender_name: Der Name des Absenders der Nachricht.
+    - sender_email: Die E-Mail-Adresse des Absenders.
+    - msg_subject: Der ursprüngliche Betreff der Nachricht.
+    - msg_subject_sanitized: Der bereinigte Betreff, bei dem unerwünschte Zeichen entfernt wurden.
+    - new_msg_filename: Der neu generierte Dateiname für die MSG-Datei.
+    - new_truncated_msg_filename: Der gekürzte Dateiname, falls der ursprüngliche Dateiname die maximale Pfadlänge überschreitet.
+    - is_msg_filename_truncated: Ein boolescher Wert, der angibt, ob der Dateiname gekürzt wurde.
+
+    Verwendung:
+    Diese Klasse wird verwendet, um die Ergebnisse der Funktion `generate_new_msg_filename` zu speichern und zurückzugeben.
+    """
     datetime_stamp: datetime
     formatted_timestamp: str
     sender_name: str
@@ -36,6 +59,22 @@ LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders_pri
 PRINT_RESULT = False
 
 def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
+    """
+    generate_new_msg_filename(msg_path_and_filename, max_path_length=260)
+
+    Diese Funktion generiert einen neuen Dateinamen für eine MSG-Datei basierend auf deren Metadaten. Der neue Dateiname wird aus dem Versanddatum, der Absender-E-Mail und dem Betreff der Nachricht zusammengesetzt. Falls der resultierende Dateipfad die maximale Pfadlänge überschreitet, wird der Dateiname entsprechend gekürzt.
+
+    Parameter:
+    - msg_path_and_filename: Der vollständige Pfad zur MSG-Datei, für die ein neuer Dateiname generiert werden soll.
+    - max_path_length: Die maximale Länge des Dateipfads. Standardmäßig auf 260 Zeichen gesetzt.
+
+    Rückgabe:
+    - Ein MsgFilenameResult-Objekt, das Informationen wie den Zeitstempel, den formatierten Zeitstempel, den Absendernamen, die Absender-E-Mail, den Betreff, den bereinigten Betreff, den neuen Dateinamen, den gekürzten Dateinamen (falls erforderlich) und einen Indikator, ob der Dateiname gekürzt wurde, enthält.
+
+    Verwendung:
+    Importieren Sie diese Funktion in Ihr Skript, um neue Dateinamen für MSG-Dateien zu generieren, die auf den Metadaten der Dateien basieren.
+    """
+
     format_string = "%Y%m%d-%Huhr%M"  # Beispiel für das gewünschte Format für Zeitstempel
 
     # 0. Schritt: Laden der bekannten Sender aus der CSV-Datei
@@ -44,7 +83,7 @@ def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
     logger.debug(f"Liste der bekannten Email-Absender: {known_senders_df}'")  # Debugging-Ausgabe: Log-File
 
     # Auslesen des msg-Objektes
-    msg_object = get_msg_object2(msg_path_and_filename)
+    msg_object = get_msg_object(msg_path_and_filename)
 
     # 1. Schritt: Absender-String aus der MSG-Datei abrufen mit alternativer Methode
     if MsgAccessStatus.SUCCESS in msg_object["status"] and MsgAccessStatus.SENDER_MISSING not in msg_object["status"]:
@@ -56,7 +95,7 @@ def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
         print(f"\t\tSchritt 1: In MSG-Datei keinen Absender-String gefunden.")  # Debugging-Ausgabe: Console
         logger.warning(f"Schritt 1: In MSG-Datei keinen Absender-String gefunden.")  # Debugging-Ausgabe: Log-File
 
-    # 2. Schritt: Absender-Email aus dem gefundenen Absender-String mit Hilfe einer Regex-Methode extrahieren
+    # 2. Schritt: Absender-Email aus dem gefundenen Absender-String mithilfe einer Regex-Methode extrahieren
     parsed_sender_email = {"sender_name": "", "sender_email": "", "contains_sender_email": False} # Defaultwerte für parsed_sender_email setzen
 
     # Wenn der Absender-String aus der MSG-Datei erfolgreich ausgelesen wurde, dann wird die Absender-Email aus dem Absender-String extrahiert
@@ -141,8 +180,8 @@ def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
         new_truncated_msg_path_and_filename = new_msg_path_and_filename
         new_truncated_msg_filename = new_msg_filename
         is_msg_filename_truncated = False
-        print(f"\t\tSchritt 9: Kein Kürzen des Dateinames erforderlich.")  # Debugging-Ausgabe: Console
-        logger.debug(f"Schritt 9: Kein Kürzen des Dateinames erforderlich.")  # Debugging-Ausgabe: Log-File
+        print(f"\t\tSchritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Console
+        logger.debug(f"Schritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Log-File
 
     # Ausgabe aller Informationen
     if PRINT_RESULT:
