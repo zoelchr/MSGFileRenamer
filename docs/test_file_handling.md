@@ -1,54 +1,81 @@
-# test_file_handling.py
+# Beschreibung: test_file_handling.py
 
-Dieses Modul enthält Tests für die Funktionen im Modul `file_handling.py`. Es stellt sicher, dass die Funktionen korrekt arbeiten und die erwarteten Ergebnisse liefern.
+## Übersicht
 
-## Inhaltsverzeichnis
+Das Modul `test_file_handling.py` enthält umfangreiche Funktionstests für das Modul `file_handling.py`. Es simuliert realistische Arbeitsabläufe zur Prüfung von Dateioperationen wie Umbenennen, Erstell-/Änderungsdatum setzen und Datei-Zugriff.
 
-- [Einführung](#einführung)
-- [Verwendung](#verwendung)
-- [Funktionen](#funktionen)
-- [Testablauf](#testablauf)
-- [Ergebnisse](#ergebnisse)
+---
 
-## Einführung
+## Zweck der Tests
 
-Das `test_file_handling.py`-Modul führt eine Reihe von Tests durch, um die Funktionalität der Dateioperationen zu überprüfen, die im `file_handling.py`-Modul definiert sind. Die Tests umfassen das Löschen, Kopieren und Umbenennen von Dateien sowie das Setzen von Erstellungs- und Änderungsdaten.
+- **Validierung** von Funktionen wie:
+  - `rename_file`
+  - `set_file_creation_date`
+  - `set_file_modification_date`
+  - `test_file_access`
+  - `format_datetime_stamp`
+- **Dateizugriff** (lesend, schreibend, gesperrt)
+- **Umbenennung** von MSG-Dateien auf Basis von Metadaten
+- **Setzen von Datei-Zeitstempeln** entsprechend dem Versanddatum einer Nachricht
+- **Logging** von Programmverlauf und Fehlern
 
-## Verwendung
+---
 
-Um die Tests auszuführen, verwenden Sie den folgenden Befehl in der Kommandozeile:
+## Aufbau des Tests
+
+- Verwendung eines **Quellverzeichnisses** mit MSG-Dateien
+- Kopie der Dateien in ein **temporäres Testverzeichnis**
+- Durchführung der Prüfungen auf jedem MSG-File im Zielverzeichnis
+
+---
+
+## Abhängigkeiten
+
+- `file_handling` (aus `utils`):
+  - Dateioperationen
+- `msg_handling` (aus `modules`):
+  - Extraktion von Versanddatum
+- `testset_preparation`:
+  - Vorbereitung des Zielverzeichnisses
+
+---
+
+## Logging
+
+- Logdatei:  
+  `D:/Dev/pycharm/MSGFileRenamer/logs/test_file_handling_prog_log.log`
+- Log-Level über `DEBUG_MODE = True` steuerbar
+- Ausgaben sowohl in Konsole als auch in Logdatei
+
+---
+
+## Beispielausgabe
+
+```plaintext
+MSG-Datei: beispiel.msg
+Ergebnis Zugriffsprüfung: ['Readable', 'Writable']
+Versandzeitpunkt: 2024-03-22 15:00:00
+Neuer Dateiname: 20240322-15uhr00_beispiel.msg
+Neues Erstellungsdatum gesetzt.
+Neues Änderungsdatum gesetzt.
+```
+
+---
+
+## Ausführung
+
+Das Skript kann direkt ausgeführt werden:
+
+```bash
+python test_file_handling.py
+```
+
+oder via Unittest:
 
 ```bash
 python -m unittest test_file_handling.py
 ```
 
-## Funktionen
+---
 
-Die wichtigsten Funktionen, die in diesem Modul getestet werden, sind:
-
-- **delete_directory_contents**: Löscht den Inhalt eines angegebenen Verzeichnisses.
-- **copy_directory_contents**: Kopiert den Inhalt eines Quellverzeichnisses in ein Zielverzeichnis.
-- **rename_file**: Benennt eine Datei um.
-- **delete_file**: Löscht eine angegebene Datei.
-- **format_datetime_stamp**: Formatiert einen Zeitstempel in ein bestimmtes Format.
-- **set_file_creation_date**: Setzt das Erstelldatum einer Datei.
-- **set_file_date**: Setzt das Änderungsdatum einer Datei.
-- **test_file_access**: Überprüft den Zugriff auf eine Datei.
-- **get_date_sent_msg_file**: Ruft das Versanddatum aus einer MSG-Datei ab.
-
-## Testablauf
-
-1. **Verzeichnisse definieren**: Das Quell- und Zielverzeichnis für die Tests werden festgelegt.
-2. **Zielverzeichnis erstellen**: Wenn das Zielverzeichnis nicht existiert, wird es erstellt.
-3. **Inhalt löschen**: Der Inhalt des Zielverzeichnisses wird gelöscht.
-4. **Inhalt kopieren**: Der Inhalt des Quellverzeichnisses wird in das Zielverzeichnis kopiert.
-5. **Durchsuchen nach MSG-Dateien**: Das Zielverzeichnis wird nach Dateien mit der Endung `.msg` durchsucht.
-6. **Dateizugriff prüfen**: Der Zugriff auf jede gefundene Datei wird überprüft.
-7. **Versanddatum abrufen**: Das Versanddatum wird aus der MSG-Datei abgerufen.
-8. **Datei umbenennen**: Die Datei wird basierend auf dem Versanddatum umbenannt.
-9. **Daten setzen**: Das Erstelldatum und das Änderungsdatum der Datei werden gesetzt.
-10. **Ergebnisse ausgeben**: Am Ende werden die Anzahl der umbenannten Dateien und der Dateien mit Problemen ausgegeben.
-
-## Ergebnisse
-
-Nach Abschluss der Tests gibt das Skript die Anzahl der erfolgreich umbenannten Dateien und die Anzahl der Dateien mit Problemen aus. Dies ermöglicht eine schnelle Überprüfung der Funktionalität des `file_handling.py`-Moduls.
+Erstellt aus dem Quellcode `test_file_handling.py`.

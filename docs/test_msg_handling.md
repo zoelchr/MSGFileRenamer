@@ -1,51 +1,86 @@
-# Dokumentation für das Modul `test_msg_handling.py`
+# Beschreibung: test_msg_handling.py
 
 ## Übersicht
 
-Das Modul `test_msg_handling.py` enthält Tests für die Funktionen im Modul `msg_handling.py`. Es stellt sicher, dass die Funktionen korrekt arbeiten und die erwarteten Ergebnisse liefern. Die Tests decken verschiedene Aspekte der Funktionalität ab, einschließlich der Verarbeitung von MSG-Dateien und der Protokollierung.
+Das Modul `test_msg_handling.py` testet die Funktionen des Moduls `msg_handling.py`. Es prüft die Extraktion und Verarbeitung von Metadaten aus MSG-Dateien sowie die Formatierung, Validierung und Reduktion von E-Mail-Inhalten. Zusätzlich wird ein strukturierter Logeintrag für jede verarbeitete Datei erzeugt.
 
-## Testfunktionen
+---
 
-Die Tests umfassen:
+## Ziele der Tests
 
-- **Überprüfung der Rückgabewerte**:
-  - `get_sender_msg_file`: Überprüft, ob die Absender-E-Mail-Adresse korrekt zurückgegeben wird.
-  - `get_subject_msg_file`: Validiert, dass der Betreff der Nachricht korrekt extrahiert wird.
-  - `get_date_sent_msg_file`: Stellt sicher, dass das Versanddatum korrekt abgerufen wird.
-  - `get_subject_msg_file2`: Überprüft die korrekte Rückgabe des Betreffs aus einer MSG-Datei.
+- Validierung der Funktionalität von:
+  - `get_msg_object()`
+  - `parse_sender_msg_file()`
+  - `load_known_senders()`
+  - `format_datetime()`
+  - `custom_sanitize_text()`
+  - `truncate_filename_if_needed()`
+  - `reduce_thread_in_msg_message()`
+- Sicherstellen der Metadaten-Extraktion:
+  - Absendername und E-Mail
+  - Versandzeitpunkt (formatiert)
+  - Betreff (roh und bereinigt)
+  - Nachrichtentext (reduziert)
+- Logging in strukturierter Excel-Datei
 
-- **Validierung der Funktionalität**:
-  - `parse_sender_msg_file`: Testet die korrekte Extraktion von Senderinformationen aus dem Sender-String.
-  
-- **Protokollierung**:
-  - `create_log_file`: Überprüft, ob Logdateien erfolgreich erstellt werden.
-  - `log_entry`: Stellt sicher, dass Einträge korrekt in die Logdatei geschrieben werden.
+---
 
-- **Textverarbeitung**:
-  - `custom_sanitize_text`: Testet die Bereinigung von Texten, um unerwünschte Zeichen zu entfernen.
-  - `truncate_filename_if_needed`: Überprüft, ob Dateinamen korrekt gekürzt werden, um die maximal zulässige Pfadlänge nicht zu überschreiten.
+## Aufbau
 
-## Verwendung
+1. Testdaten werden in ein Zielverzeichnis kopiert.
+2. Jede MSG-Datei wird eingelesen und analysiert.
+3. Ein neuer, sprechender Dateiname wird erzeugt.
+4. Optional wird der Name bei zu großer Länge gekürzt.
+5. Die Ergebnisse werden protokolliert.
 
-Um alle Tests durchzuführen und die Ergebnisse zu überprüfen, führen Sie dieses Skript aus. Stellen Sie sicher, dass die erforderlichen Module installiert sind.
+---
 
-### Vorbedingungen
+## Wichtige Einstellungen
 
-- Die Datei `known_senders.csv` muss befüllt werden, und der Pfad muss korrekt eingetragen sein.
-- Zusätzlich benötigt das Programm geeignete Testdaten (MSG-Dateien) in einem Verzeichnis, bei Bedarf auch mit weiteren Unterverzeichnissen. Auch dieses Verzeichnis muss im Modul korrekt eingetragen sein.
+- `DEBUG_MODE`: Aktiviert detailliertes Logging
+- `LIST_OF_KNOWN_SENDERS`: CSV-Datei mit bekannten Absendern
+- `format_timestamp_string`: Format für Datumsangabe im Dateinamen
+- Logdatei: `msg_log.xlsx`
 
-### Ausführen der Tests
+---
 
-Führen Sie den folgenden Befehl in der Kommandozeile aus:
+## Beispiel für erzeugten Dateinamen
+
+```
+20240324-16uhr10_jane.doe@example.com_Projektstatus.msg
+```
+
+---
+
+## Logeinträge
+
+In der Excel-Logdatei werden folgende Felder festgehalten:
+
+- Fortlaufende Nummer
+- Verzeichnisname
+- Original-Dateiname
+- Absendername & E-Mail
+- Zeitstempel (roh & formatiert)
+- Betreff (roh & bereinigt)
+- Neuer Dateiname & gekürzte Version
+- Gekürzter Pfadname
+- Nachricht & gekürzte Nachricht
+- Anzahl reduzierter E-Mails
+
+---
+
+## Ausführung
+
+```bash
+python test_msg_handling.py
+```
+
+oder mit `unittest`:
 
 ```bash
 python -m unittest test_msg_handling.py
 ```
 
-### To-Do: Noch nicht abgedeckte Funktionen
-Die folgenden Funktionen aus `msg_handling.py` sind derzeit nicht durch Tests in test_msg_handling.py abgedeckt:
-- `load_known_senders(file_path)`: Es sollten Tests hinzugefügt werden, um sicherzustellen, dass bekannte Sender korrekt geladen werden.
-- `create_log_file(base_name, directory)`: Tests zur Überprüfung der Erstellung von Logdateien sollten implementiert werden.
-- `convert_to_utc_naive(datetime_stamp)`: Tests zur Validierung der Konvertierung von Zeitstempeln in UTC-naive Objekte fehlen.
-- `format_datetime(datetime_stamp, format_string)`: Tests zur Überprüfung der Formatierung von Zeitstempeln sollten hinzugefügt werden.
-Diese Funktionen sollten in zukünftigen Testläufen berücksichtigt werden, um eine vollständige Testabdeckung zu gewährleisten.
+---
+
+Erstellt aus dem Quellcode `test_msg_handling.py`.

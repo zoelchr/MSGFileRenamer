@@ -1,38 +1,56 @@
-# testset_preparation.py
+# Beschreibung: testset_preparation.py
 
-Dieses Modul enthält Funktionen zur Vorbereitung von Testverzeichnissen für die Verarbeitung von MSG-Dateien.
-Es ermöglicht das Erstellen eines Zielverzeichnisses, das Löschen seines Inhalts und das Kopieren von Dateien
-aus einem Quellverzeichnis. Diese Funktionalität ist nützlich für automatisierte Tests, bei denen eine saubere
-Umgebung erforderlich ist.
+## Übersicht
 
-## Inhaltsverzeichnis
+Das Modul `testset_preparation.py` stellt eine Funktion zur Verfügung, um automatisiert Testverzeichnisse für die Verarbeitung von MSG-Dateien vorzubereiten. Dies ist insbesondere in Testumgebungen nützlich, in denen reproduzierbare Bedingungen geschaffen werden sollen.
 
-- [Einführung](#einführung)
-- [Funktionen](#funktionen)
-- [Verwendung](#verwendung)
+---
 
-## Einführung
+## Funktion
 
-Das `testset_preparation.py`-Modul bietet eine einfache Möglichkeit, Testverzeichnisse für die Verarbeitung von MSG-Dateien vorzubereiten. Es stellt sicher, dass das Zielverzeichnis existiert, löscht dessen Inhalt und kopiert die erforderlichen Dateien aus einem Quellverzeichnis.
+### `prepare_test_directory(source_dir, target_dir)`
 
-## Funktionen
+Bereitet ein Zielverzeichnis für Tests vor, indem es:
+1. Das Zielverzeichnis erstellt (falls es nicht existiert),
+2. Dessen bestehenden Inhalt löscht,
+3. Und alle Inhalte aus dem Quellverzeichnis in das Zielverzeichnis kopiert.
 
-### 1. `prepare_test_directory(source_dir, target_dir)`
-Bereitet das Zielverzeichnis für Tests vor, indem es erstellt, den Inhalt löscht und die Dateien aus dem Quellverzeichnis kopiert.
+**Parameter:**
+- `source_dir` *(str)*: Quellverzeichnis mit Dateien für den Test
+- `target_dir` *(str)*: Zielverzeichnis, das neu vorbereitet wird
 
-- **Parameter**:
-  - `source_dir` (str): Der Pfad zum Quellverzeichnis, aus dem die Dateien kopiert werden.
-  - `target_dir` (str): Der Pfad zum Zielverzeichnis, das vorbereitet werden soll.
+**Rückgabewert:**
+- `True`, wenn die Vorbereitung erfolgreich war
+- `False`, wenn ein Fehler auftritt
 
-- **Rückgabewert**:
-  - bool: True, wenn die Operation erfolgreich war, andernfalls False.
+**Beispiel:**
+```python
+success = prepare_test_directory("D:/quelle", "D:/ziel")
+if success:
+    print("Testverzeichnis erfolgreich vorbereitet.")
+```
 
-- **Beispiel**:
-    ```python
-    success = prepare_test_directory("D:/source_directory", "D:/target_directory")
-    if success:
-        print("Das Testverzeichnis wurde erfolgreich vorbereitet.")
-    ```
-  
-## Verwendung
-Um die Funktion `prepare_test_directory` zu verwenden, importiere sie in dein Hauptprogramm oder andere Module und rufe sie mit den entsprechenden Verzeichnispfaden auf. Die Funktion gibt einen Status zurück, der angibt, ob die Vorbereitung des Testverzeichnisses erfolgreich war.
+---
+
+## Interne Abhängigkeiten
+
+Dieses Modul verwendet folgende Funktionen aus dem Modul `utils.file_handling`:
+- `delete_directory_contents()`: Löscht den Inhalt eines Verzeichnisses
+- `copy_directory_contents()`: Kopiert den Inhalt eines Verzeichnisses
+
+---
+
+## Abhängigkeiten
+
+- `os`
+- `utils.file_handling`
+
+---
+
+## Anwendungsfall
+
+Ideal zur Vorbereitung automatisierter Testläufe, z. B. für Unit-Tests oder manuelle Prüfungen von Verarbeitungsskripten für MSG-Dateien.
+
+---
+
+Erstellt aus dem Quellcode `testset_preparation.py`.
