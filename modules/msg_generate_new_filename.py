@@ -115,7 +115,7 @@ def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
         if not known_sender_row.empty:
             parsed_sender_email["sender_email"] = known_sender_row.iloc[0]["sender_email"]
             parsed_sender_email["contains_sender_email"] = True
-            print(f"\tSchritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Console
+            print(f"\t\tSchritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Console
             logger.debug(f"Schritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Log-File
         else:
             parsed_sender_email["contains_sender_email"] = False

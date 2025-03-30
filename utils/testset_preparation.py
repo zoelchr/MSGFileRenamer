@@ -40,16 +40,16 @@ def prepare_test_directory(source_dir, target_dir):
             os.makedirs(target_dir, exist_ok=True)
 
         # Löschen des Inhalts des Zielverzeichnisses
-        print(f"Lösche Inhalt von: {target_dir}")
+        print(f"\tLösche Inhalt von: {target_dir}")
         delete_directory_contents(target_dir)
 
         # Kopieren des Quellverzeichnisses in das Zielverzeichnis
-        print(f"Kopiere Inhalt von: {source_dir} nach: {target_dir}")
+        print(f"\tKopiere Inhalt von: {source_dir} nach: {target_dir}")
         copy_directory_contents(source_dir, target_dir)
 
         return True  # Operation war erfolgreich
     except Exception as e:
-        print(f"Fehler bei der Vorbereitung des Testverzeichnisses: {str(e)}")
+        print(f"\tFehler bei der Vorbereitung des Testverzeichnisses: {str(e)}")
         return False  # Operation war nicht erfolgreich
 
 
