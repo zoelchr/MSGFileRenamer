@@ -28,11 +28,13 @@ Hinweise:
 - Passen Sie das Namensschema und die Konfiguration an Ihre Anforderungen an, bevor Sie das Modul verwenden.
 """
 
-
 import os
 import logging
 import datetime
 import argparse
+from idlelib.pyshell import usage_msg
+
+from pandas.core.apply import is_multi_agg_with_relabel
 
 from modules.msg_generate_new_filename import generate_new_msg_filename
 from utils.file_handling import (rename_file, test_file_access, FileAccessStatus, set_file_creation_date, set_file_modification_date, FileOperationResult)
@@ -48,13 +50,13 @@ TARGET_DIRECTORY = ""
 # Maximal zulässige Pfadlänge für Windows 11
 max_path_length = 260
 
-def setup_logging(debug=False):
+def setup_logging(file, debug=False):
     log_level=logging.DEBUG if debug else logging.INFO
     logging.basicConfig(
         level=log_level,
         format='%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
-        filename=prog_log_file_path
+        filename=file
     )
 
 if __name__ == '__main__':
@@ -96,20 +98,20 @@ if __name__ == '__main__':
     prog_log_file_path = os.path.join(debug_log_directory, excel_log_basename) # Pfad und Dateiname für die Excel-Log-Datei
 
     # Logging für Test und Debugging konfigurieren
-    setup_logging(DEBUG_MODE)
+    setup_logging(prog_log_file_path, DEBUG_MODE)
     logger = logging.getLogger(prog_log_file_path)
     # Logging für die Programm-Ausführung
     logger.info("Programm gestartet")
     logger.info(f"Debug-Modus: {DEBUG_MODE}")
     logging.info(f"Programm Logdatei: {prog_log_file_path}")
 
-    logging.debug(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}")  # Debugging-Ausgabe: Log-File
-
     # Verzeichnis für die Suche festlegen
     if not TARGET_DIRECTORY:
         TARGET_DIRECTORY = TARGET_DIRECTORY_TEST_DATA
         logging.debug(f"\nÜbergebene Argumente {args}\n")  # Debugging-Ausgabe: Log-File
+
     print(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}") # Debugging-Ausgabe: Console
+    logging.debug(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}")  # Debugging-Ausgabe: Log-File
 
     # Log-Verzeichnis und Basisname für Excel-Logdateien festlegen
     LOG_TABLE_HEADER = ["Fortlaufende Nummer", "Verzeichnisname", "Original-Filename"]
@@ -162,10 +164,15 @@ if __name__ == '__main__':
 
     # Durchsuchen des Zielverzeichnisses nach MSG-Dateien
     # pathname = Verzeichnisname, dirs = Unterverzeichnisse, files = List von Dateien
-    for pathname, dirs, files in os.walk(TARGET_DIRECTORY_TEST_DATA):
+    for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
         # filename = Dateiname
         for filename in files:
             logging.debug(f"\n******************************************************'")  # Debugging-Ausgabe: Log-File
+
+            # Initialisierung der Variable
+            is_msg_file_name_unchanged = False
+            is_msg_file_doublette = False
+            is_msg_file_doublette_deleted = False
 
             # Überprüfen, ob die Datei die Endung .msg hat
             if filename.lower().endswith('.msg'):
@@ -213,6 +220,7 @@ if __name__ == '__main__':
                             print(f"\tAlter und neuer Dateiname sind gleich: '{filename}'")
                             logging.debug(f"Alter und neuer Dateiname sind gleich: '{filename}'")  # Debugging-Ausgabe: Log-File
                             msg_file_same_name_count += 1  # Erfolgszähler erhöhen
+                            is_msg_file_name_unchanged = True # Kennzeichnung keine Änderung des Dateinamens erforderlich
                             is_msg_file_for_change_date_available = True # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
                         else:
                             # Prüfen, ob die Datei mit neuem Namen bereits existiert, also Doublette
@@ -220,6 +228,7 @@ if __name__ == '__main__':
                                 print(f"Datei ist eine Doublette: '{filename}'")
                                 logging.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
                                 msg_file_doublette_count += 1  # Erfolgszähler erhöhen
+                                is_msg_file_doublette = True # MSG-Datei mit gleichem neuen Namen existiert bereits - also Doublette
                                 is_msg_file_for_change_date_available = True  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
 
                                 # Versuche Doublette zu löschen, wenn nicht Test
@@ -230,6 +239,7 @@ if __name__ == '__main__':
                                         print(f"Doublette gelöscht: '{filename}'")
                                         logging.debug(f"Doublette gelöscht: '{filename}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_doublette_deleted_count += 1  # Löschzähler erhöhen
+                                        is_msg_file_doublette_deleted = True
                                     except Exception as e:
                                         print(f"Doublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")
                                         logging.error(f"Doublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")  # Debugging-Ausgabe: Log-File
@@ -316,18 +326,14 @@ if __name__ == '__main__':
                     "Bereinigter Betreff": new_msg_filename_collection.msg_subject_sanitized,
                     "Neuer Dateiname": new_msg_filename_collection.new_msg_filename,
                     "Neuer gekürzter Dateiname": new_msg_filename_collection.new_truncated_msg_filename,
-                    "Kürzung Dateiname erforderlich": new_msg_filename_collection.is_msg_filename_truncated
-                }
-            else:
-                # Verkürzter Logeintrag erstellen, generate_new_msg_filename kein Ergebnis liefert
-                entry = {
-                    "Fortlaufende Nummer": msg_file_count,
-                    "Verzeichnisname": pathname,
-                    "Original-Filename": filename
+                    "Kürzung Dateiname erforderlich": new_msg_filename_collection.is_msg_filename_truncated,
+                    "Alter und neuer Name sind gleich": is_msg_file_name_unchanged,
+                    "Doublette": is_msg_file_doublette,
+                    "Doublette gelöscht": is_msg_file_doublette_deleted
                 }
 
-            # Eintrag ins Logfile hinzufügen
-            log_entry(excel_log_file_path, entry)
+                # Eintrag ins Logfile hinzufügen
+                log_entry(excel_log_file_path, entry)
 
     # Ausgabe der Ergebnisse
     print(f"\nTestlauf: {TEST_RUN}")
