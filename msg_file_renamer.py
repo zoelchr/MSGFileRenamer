@@ -1,54 +1,115 @@
 """
 msg_file_renamer.py
 
-Dieses Modul bietet Funktionen für das Umbenennen von MSG-Dateien basierend auf den in den Dateien enthaltenen Metadaten. Es stellt sicher, dass die Dateien konsistent benannt werden und speichert wichtige Informationen über den Umbenennungsprozess in einem Log. Ziel ist es, MSG-Dateien (z. B. E-Mail-Dateien) nach einem definierten Schema umzubenennen, um sie leichter zu organisieren und zu finden.
+Dieses Modul bietet Funktionen für das Umbenennen von MSG-Dateien basierend auf den in den Dateien enthaltenen Metadaten.
+Es stellt sicher, dass die Dateien konsistent benannt werden und speichert wichtige Informationen über den Umbenennungsprozess in einem Log.
+Ziel ist es, MSG-Dateien (z.B. E-Mail-Dateien) nach einem definierten Schema umzubenennen, um sie leichter zu organisieren und zu finden.
 
 Funktionen und Prozesse:
 - Extraktion von Metadaten:
   - Liest relevante Metadaten aus MSG-Dateien aus, wie Betreff, Absender, Empfänger und Datum.
   - Erkennt und behandelt Sonderzeichen, um valide Dateinamen zu generieren.
-- Dateiumbenennung:
+- Dateiumbenennung: (Optional)
   - Generiert neue Dateinamen basierend auf Metadaten und einem vordefinierten Schema.
   - Überprüft, ob Dateien ohne Konflikte im Zielverzeichnis gespeichert werden können.
+- Änderung des Dateierstellungsdatums: (Optional)
+  - Setzt das Erstellungsdatum auf das Versanddatum der MSG-Datei
+  - Setzt das Änderungsdatum auf das Versanddatum der MSG-Datei
+- Generierung von PDF-Dateien: (Optional)
+  - Generiert eine PDF-Datei aus der MSG-Datei.
+  - Überschreibt vorhandene PDF-Dateien, falls gewünscht.
+- Kürzung von Dateinamen: (Optional)
+  - Optional: Kürzt Dateinamen, die länger als 255 Zeichen sind, um Probleme mit dem Dateisystem zu vermeiden.
 - Fehlerbehandlung:
-  - Erkennt problematische Dateien (z. B. beschädigte MSG-Dateien) und protokolliert entsprechende Fehler.
-  - Behandelt bestehende Dateien mit dem gleichen Namen, um Namenskonflikte zu vermeiden.
+  - Erkennt problematische Dateien (z.B. beschädigte MSG-Dateien) und protokolliert entsprechende Fehler.
+  - Behandelt bestehende Dateien mit demselben Namen, um Namenskonflikte zu vermeiden.
 - Protokollierung:
-  - Führt detaillierte Aufzeichnungen über umbenannte Dateien sowie etwaige Probleme während des Prozesses.
-  - Optionaler Export der Logdaten für weitere Analysen.
-- Unterstützte Funktionen:
-  - Testmodus: Erlaubt eine Simulation ohne tatsächliches Ändern der Dateien.
-  - Unterstützung für verschiedene Zielverzeichnisse und Konfigurationsoptionen.
+  - Alle Änderungen werden auch im Testmode in einer Exceldatei abgespeichert
+  - Führt detaillierte Aufzeichnungen über umbenannte Dateien sowie über auftretende Probleme während des Prozesses.
+
+Sepzielle Parameter zur Konfiguration
+- TARGET_DIRECTORY: Verzeichnis, in dem nach MSG-Dateien gesucht und (optional) auch bearbeitet werden sollen.
+- SOURCE_DIRECTORY_TEST_DATA: Verzeichnis, in dem Testdaten gespeichert sind. Diese Testdaten bleiben immer unverändert.
+- TARGET_DIRECTORY_TEST_DATA: Verzeichnis, in dem während eines Programmlaufs die Testdaten kopiert und dann auch verändert werden.
+- LOG_FILE_PATH: Pfad zur Log-Datei.
+- LOG_LEVEL: Gibt das gewünschte Log-Level an (z. B. DEBUG, INFO, WARNING, ERROR).
+- MAX_LENGTH_SUBJECT: Maximale Länge des Betreffs, bevor er gekürzt wird.
+- MAX_LENGTH_SENDERLIST: Maximale Länge der Empfängerliste, bevor sie gekürzt wird.
+- MAX_BODY_LENGTH: Maximale Länge des Nachrichtentextes, bevor er gekürzt wird.
+- MAX_FILENAME_LENGTH: Maximale Länge des Dateinamens, bevor er gekürzt wird.
+- MAX_PATH_LENGTH: Maximale Länge des Dateipfads, bevor er gekürzt wird.
+- MAX_PDF_LENGTH: Maximale Länge des PDF-Inhalts, bevor er gekürzt wird.
+
+Kommandozeilenargumente:
+--search_directory <Zielpfad>
+    Gibt das Verzeichnis an, in dem nach MSG-Dateien gesucht wird.
+    Wird kein Pfad angegeben, wird ein Standardverzeichnis verwendet.
+--excel_log_directory <Zielpfad>
+    Gibt das Verzeichnis an, in dem die Excel-Log-Datei erstellt wird.
+    Wird kein Pfad angegeben, wird das gleiche Verzeichnis verwendet, wo auch die Python-Datei liegt.
+--no_test_run
+    Wenn dieses Flag gesetzt wird, wird der Testmodus deaktiviert,
+    d.h. die Dateien werden tatsächlich umbenannt bzw. verändert.
+    (Standard: Testmodus aktiv, d. h. keine echten Dateiänderungen.)
+--set_filedate
+    Wenn dieses Flag gesetzt wird, wird das Erstellungs- und das Änderungsdatum der MSG-Datei auf das
+    Datum des Versandzeitpunkts gesetzt.
+    (Standard: False)
+--no_shorten_path_name
+    Wenn dieses Flag gesetzt ist, wird der Pfad nicht gekürzt, wenn er zu lang ist.
+    (Standard: False)
+--generate_pdf
+    Wenn dieses Flag gesetzt ist, wird aus der MSG-Datei eine PDF-Datei erstellt.
+    (Standard: False)
+--overwrite_pdf
+    Gibt an, ob vorhandene PDF-Dateien überschrieben werden sollen.
+    Bei True wird eine ggf. schon vorhandene, gleichnamige PDF-Datei überschrieben,
+    bei False bleibt die bestehende PDF-Datei erhalten.
+
+Kommandozeilenargumente speziell zu Testzwecken
+--debug_mode
+    Wenn dieses Flag gesetzt ist, dann wird der Debug-Mode aktiviert.
+    (Standard: False)
+--no_test_run
+    Wenn dieses Flag gesetzt ist, dann wird der Testmodus deaktiviert.
+    (Standard: False)
+--init_testdata
+    Wenn dieses Flag gesetzt ist, dann werden alle Dateien aus dem Verzeichnis SOURCE_DIRECTORY_TEST_DATA in das Verzeichnis TARGET_DIRECTORY_TEST_DATA kopiert.
+--debug_log_directory <Zielpfad>
+    Gibt den Dateinamen an, in den die Log-Nachrichten geschrieben werden sollen.
+    Wird kein Pfad angegeben, wird das gleiche Verzeichnis verwendet, wo auch die Python-Datei liegt.
 
 Verwendung:
-Das Modul kann verwendet werden, um MSG-Dateien schnell und effizient umzubenennen sowie deren Organisation zu verbessern. Es ist besonders nützlich, um große Mengen an E-Mail-Dateien nach einheitlichen Kriterien zu strukturieren. Der Testmodus ist ideal, um den Prozess vor der endgültigen Ausführung zu validieren.
+Das Modul kann verwendet werden, um MSG-Dateien schnell und effizient umzubenennen sowie deren Organisation zu verbessern.
+Es ist besonders nützlich, um große Mengen an E-Mail-Dateien nach einheitlichen Kriterien zu strukturieren.
+Der Testmodus ist ideal, um den Prozess vor der endgültigen Ausführung zu validieren.
 
 Hinweise:
-- Stellen Sie sicher, dass alle Abhängigkeiten für das Lesen von MSG-Dateien erfüllt sind.
-- Passen Sie das Namensschema und die Konfiguration an Ihre Anforderungen an, bevor Sie das Modul verwenden.
+- Stellen Sie sicher, dass alle Abhängigkeiten (zum Beispiel für das Lesen von MSG-Dateien und die PDF-Erzeugung) installiert sind.
+- Passen Sie das Namensschema, die optionalen Attribute und die Konfiguration an Ihre Anforderungen an, bevor Sie das Modul produktiv einsetzen.
 """
 
 import os
 import logging
 import datetime
 import argparse
-from idlelib.pyshell import usage_msg
-
-from pandas.core.apply import is_multi_agg_with_relabel
 
 from modules.msg_generate_new_filename import generate_new_msg_filename
 from utils.file_handling import (rename_file, test_file_access, FileAccessStatus, set_file_creation_date, set_file_modification_date, FileOperationResult)
 from modules.msg_handling import create_log_file, log_entry
 from utils.testset_preparation import prepare_test_directory
+from utils.pdf_generation import generate_pdf_from_msg
+from pathlib import Path
 
 # Verzeichnisse für die Tests definieren
-SOURCE_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\data\sample_files\testset-short'
-# SOURCE_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\data\sample_files\testset-long'
-TARGET_DIRECTORY_TEST_DATA = r'D:\Dev\pycharm\MSGFileRenamer\tests\functional\testdir'
+# SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short-longpath'
+SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-long'
+# SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short'
+TARGET_DIRECTORY_TEST_DATA = r'.\tests\functional\testdir'
 TARGET_DIRECTORY = ""
 
 # Maximal zulässige Pfadlänge für Windows 11
-max_path_length = 260
+MAX_PATH_LENGTH = 260
 
 def setup_logging(file, debug=False):
     log_level=logging.DEBUG if debug else logging.INFO
@@ -67,10 +128,14 @@ if __name__ == '__main__':
     parser.add_argument("-it", "--init_testdata", default=False, action="store_true", help="True/False für Initialisiere Testdaten (Default=False)")
     parser.add_argument("-fd", "--set_filedate", default=False, action="store_true", help="True/False für File Date (Default=False)")
     parser.add_argument("-db", "--debug_mode", default=False, action="store_true", help="True/False für Debug-Mode (Default=False)")
-    parser.add_argument("-sd", "--search_directory", type=str, default="./", help="Verzeichnispfad als Such-Verzeichnis (Default='').")
+    parser.add_argument("-sd", "--search_directory", type=str, default="", help="Verzeichnispfad als Such-Verzeichnis (Default='').")
     parser.add_argument("-elb", "--excel_log_basename", type=str, default="excel_log_file", help="Dateiname-Anfang für Excel-Log-Aufzeichnung (Default='excel_log_file')")
     parser.add_argument("-elf", "--excel_log_directory", type=str, default="./", help="Verzeichnis für Excel-Log-Aufzeichnung (Default='./')")
     parser.add_argument("-dlf", "--debug_log_directory", type=str, default="./", help="Verzeichnis für Debug-Log-Aufzeichnung (Default='./')")
+    parser.add_argument("-spn", "--no_shorten_path_name", default=False, action="store_true", help="True/False für kein Kürzen des Pfades bei Überlänge (Default=False)")
+    parser.add_argument("-pdf", "--generate_pdf", default=False, action="store_true", help="True/False für Generieren eines PDF-Files aus MSG-Dateien (Default=False)")
+    parser.add_argument("-opdf", "--overwrite_pdf", default=False, action="store_true", help="True/False für Überschreiben eines bereits existierende PDF-Files aus MSG-Dateien (Default=False)")
+    parser.add_argument("-rs", "--recursive_search", default=False, action="store_true", help="True/False für die rekursive Suche nach MSG-Dateien (Default=False)")
     args, unknown = parser.parse_known_args()
 
     # Unbekannte Parameter ausgeben und Programm beenden
@@ -86,9 +151,15 @@ if __name__ == '__main__':
     SET_FILEDATE = args.set_filedate
     DEBUG_MODE = args.debug_mode
     TEST_RUN = not args.no_test_run
+    NO_SHORTEN_PATH_NAME = args.no_shorten_path_name
+    GENERATE_PDF = args.generate_pdf
+    OVERWRITE_PDF = args.overwrite_pdf
+    RECURSIVE_SEARCH = args.recursive_search
+
+    # Start Ausgabe auf Console
     print(f"\nTestlauf: {TEST_RUN}\nTestverzeichnis initialisieren: {INIT_TESTDATA}\nZeitstempel der MSG-dateien anpassen: {SET_FILEDATE}\nDebug-Modus: {DEBUG_MODE}\n")
 
-    TARGET_DIRECTORY = args.search_directory # Verzeichnis für die Suche nach MSG-Dateien
+    TARGET_DIRECTORY = Path(args.search_directory) # Verzeichnis für die Suche nach MSG-Dateien
 
     excel_log_directory = args.excel_log_directory # Verzeichnis für die Excel-Log-Datei
     excel_log_basename = args.excel_log_basename # Basisname für die Excel-Log-Datei
@@ -108,7 +179,6 @@ if __name__ == '__main__':
     # Verzeichnis für die Suche festlegen
     if not TARGET_DIRECTORY:
         TARGET_DIRECTORY = TARGET_DIRECTORY_TEST_DATA
-        logging.debug(f"\nÜbergebene Argumente {args}\n")  # Debugging-Ausgabe: Log-File
 
     print(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}") # Debugging-Ausgabe: Console
     logging.debug(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}")  # Debugging-Ausgabe: Log-File
@@ -181,6 +251,12 @@ if __name__ == '__main__':
 
                 # Absoluter Pfadname der MSG-Datei
                 path_and_file_name = os.path.join(pathname, filename)
+                # Add the \\?\ prefix to support long paths on Windows
+                if os.name == 'nt':  # Check if the OS is Windows
+                    path_and_file_name = f"\\\\?\\{os.path.abspath(path_and_file_name)}"
+                # Pfadlänge ermitteln
+                path_and_file_name_length = len(path_and_file_name)
+                logging.debug(f"Pfadlänge aktuelle MSG-Datei: '{path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
 
                 print(f"\tVollständiger Pfad der MSG-Date: '{path_and_file_name}'")  # Debugging-Ausgabe: Console
                 logging.debug(f"\tVollständiger Pfad der MSG-Datei: '{path_and_file_name}'")  # Debugging-Ausgabe: Log-File
@@ -202,7 +278,7 @@ if __name__ == '__main__':
                     new_msg_filename_collection = generate_new_msg_filename(path_and_file_name)
 
                     # Wenn Dateiname gekürzt wurde, dann Zähler erhöhen
-                    if new_msg_filename_collection.is_msg_filename_truncated: msg_file_shorted_name_count += 1
+                    # if new_msg_filename_collection.is_msg_filename_truncated: msg_file_shorted_name_count += 1
 
                     # Überprüfen, ob new_msg_filename_collection nicht Leer (True) ist
                     if new_msg_filename_collection.new_truncated_msg_filename:
@@ -212,8 +288,22 @@ if __name__ == '__main__':
 
                         # Alter und neuer Name
                         old_path_and_file_name = path_and_file_name
-                        new_file_name = new_msg_filename_collection.new_truncated_msg_filename
-                        new_path_and_file_name = os.path.join(pathname, new_msg_filename_collection.new_truncated_msg_filename)
+
+                        # Neuen Filenamen setzen in Abhängigkeit von NO_SHORTEN_PATH_NAME
+                        if NO_SHORTEN_PATH_NAME:
+                            new_file_name = new_msg_filename_collection.new_msg_filename
+                        else:
+                            new_file_name = new_msg_filename_collection.new_truncated_msg_filename
+                            if new_msg_filename_collection.is_msg_filename_truncated: msg_file_shorted_name_count += 1
+
+                        # Neuen absoluten Pfad erzeugen
+                        new_path_and_file_name = os.path.join(pathname, new_file_name)
+                        # Add the \\?\ prefix to support long paths on Windows
+                        if os.name == 'nt':  # Check if the OS is Windows
+                            new_path_and_file_name = f"\\\\?\\{os.path.abspath(new_path_and_file_name)}"
+                        # Pfadlänge ermitteln
+                        new_path_and_file_name_length = len(new_path_and_file_name)
+                        logging.debug(f"Pfadlänge neue MSG-Datei: '{new_path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
 
                         # Prüfen, ob Alter und neuer Name gleich, dann keine Änderung erforderlich
                         if old_path_and_file_name == new_path_and_file_name:
@@ -305,6 +395,17 @@ if __name__ == '__main__':
                                     logging.debug(
                                         f"Fehler beim Setzen des Änderungsdatum für '{new_file_name}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
 
+
+                        # Wenn GENERATE_PDF True ist, wird eine PDF-Datei aus der MSG-Datei erstellt
+                        if GENERATE_PDF:
+                            pdf_path = os.path.splitext(new_path_and_file_name)[0] + ".pdf"
+
+                            # Wenn der -opdf Flag False ist und die PDF-Datei bereits existiert, wird sie nicht überschrieben
+                            if not OVERWRITE_PDF and os.path.exists(pdf_path):
+                                logging.info(f"PDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
+                            else:
+                                generate_pdf_from_msg(new_path_and_file_name, 800)
+
                 elif FileAccessStatus.READABLE in access_result:
                     print(f"\tNur lesender Zugriff auf die Datei möglich.")
                     msg_file_problem_count += 1  # Problemzähler erhöhen
@@ -318,13 +419,16 @@ if __name__ == '__main__':
                     "Fortlaufende Nummer": msg_file_count,
                     "Verzeichnisname": pathname,
                     "Original-Filename": filename,
+                    "Alter absoluter Dateiname": path_and_file_name,
+                    "Alte Pfadlänge": path_and_file_name_length,
                     "Versanddatum": new_msg_filename_collection.datetime_stamp,
                     "Formatiertes Versanddatum": new_msg_filename_collection.formatted_timestamp,
                     "Gefundener Absender": new_msg_filename_collection.sender_name,
                     "Gefundener Email-Absender": new_msg_filename_collection.sender_email,
                     "Betreff": new_msg_filename_collection.msg_subject,
                     "Bereinigter Betreff": new_msg_filename_collection.msg_subject_sanitized,
-                    "Neuer Dateiname": new_msg_filename_collection.new_msg_filename,
+                    "Neuer absoluter Dateiname": new_path_and_file_name,
+                    "Neue nicht gekürzte Pfadlänge": new_path_and_file_name_length,
                     "Neuer gekürzter Dateiname": new_msg_filename_collection.new_truncated_msg_filename,
                     "Kürzung Dateiname erforderlich": new_msg_filename_collection.is_msg_filename_truncated,
                     "Alter und neuer Name sind gleich": is_msg_file_name_unchanged,
@@ -334,6 +438,9 @@ if __name__ == '__main__':
 
                 # Eintrag ins Logfile hinzufügen
                 log_entry(excel_log_file_path, entry)
+
+        # Wenn keine rekursive Suche gewünscht ist, wird die Schleife beendet
+        if (not RECURSIVE_SEARCH): break
 
     # Ausgabe der Ergebnisse
     print(f"\nTestlauf: {TEST_RUN}")

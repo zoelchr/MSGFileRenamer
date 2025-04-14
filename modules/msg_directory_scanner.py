@@ -19,7 +19,6 @@ python msg_directory_scanner.py -l
 """
 
 import os
-import pandas as pd
 import sys
 from utils.excel_handling import create_excel_list, save_excel_file
 

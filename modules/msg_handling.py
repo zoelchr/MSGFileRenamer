@@ -51,6 +51,7 @@ class MsgAccessStatus(Enum):
     UNKNOWN = "Unknown"
     NO_MESSAGE_FOUND = "No message found"
     NO_SENDER_FOUND = "No sender found"
+    NO_RECIPIENT_FOUND = "No recipient found"
     SUBJECT_MISSING = "Subject missing"
     SENDER_MISSING = "Sender missing"
     DATE_MISSING = "Date missing"
@@ -87,6 +88,7 @@ def get_msg_object(msg_file: str) -> dict:
     msg_data = {
         "subject": "Unbekannt",
         "sender": "Unbekannt",
+        "recipient": "Unbekannt",
         "date": "Unbekannt",
         "body": "Kein Inhalt verfügbar",
         "attachments": [],
@@ -129,6 +131,15 @@ def get_msg_object(msg_file: str) -> dict:
                 msg_data["status"].append(MsgAccessStatus.ATTRIBUTE_ERROR)
 
             try:
+                if msg_object.recipients:
+                    msg_data["recipient"] = msg_object.to
+                    msg_data["status"] = [MsgAccessStatus.SUCCESS]  # Setze SUCCESS, wenn Sender erfolgreich extrahiert
+                else:
+                    msg_data["status"].append(MsgAccessStatus.NO_RECIPIENT_FOUND)
+            except AttributeError:
+                msg_data["status"].append(MsgAccessStatus.ATTRIBUTE_ERROR)
+
+            try:
                 if msg_object.date:
                     msg_data["date"] = msg_object.date
                     msg_data["status"] = [MsgAccessStatus.SUCCESS]  # Setze SUCCESS, wenn Datum erfolgreich extrahiert
@@ -150,7 +161,8 @@ def get_msg_object(msg_file: str) -> dict:
 
             try:
                 if msg_object.attachments:
-                    msg_data["attachments"] = [att.filename for att in msg_object.attachments]
+                    msg_data["attachments"] = [att.longFilename or att.shortFilename or "unbenannt" for att in msg_object.attachments]
+                    #msg_data["attachments"] = msg_object.attachments
                 else:
                     msg_data["status"].append(MsgAccessStatus.ATTACHMENTS_MISSING)
             except AttributeError:

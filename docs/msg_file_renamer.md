@@ -1,90 +1,121 @@
-# msg_file_renamer.py
+# Dokumentation zur ausgewählten Datei
 
-Dieses Modul wurde entwickelt, um **MSG-Dateien** (z. B. E-Mail-Dateien) auf Basis ihrer Metadaten in ein einheitliches Namensschema umzubenennen. Ziel ist es, Dateien besser organisieren, durchsuchen und strukturieren zu können. Zusätzlich werden umfassende Logdaten erstellt, um die Verarbeitung nachzuvollziehen und Fehler zu dokumentieren.
+## Übersicht
+Die Datei ist ein Python-Skript, das für die Verarbeitung und Verwaltung von MSG-Dateien (Microsoft Outlook Mail-Dateien) verwendet wird. Das Skript bietet eine Vielzahl von Funktionen, darunter:
+- Testdatenverarbeitung
+- Umbenennung von Dateien basierend auf bestimmten Kriterien
+- Anpassung der Zeitstempel von MSG-Dateien
+- Generierung von Excel- und Debug-Logs
+- Möglichkeit, PDFs aus MSG-Dateien zu generieren
 
----
+## Importierte Module
+Das Skript verwendet sowohl interne als auch benutzerdefinierte Module. Hier sind die wichtigsten Importe:
+- **Standardmodule:**
+    - `os`
+    - `logging`
+    - `datetime`
+    - `argparse`
+    - `pathlib.Path`
+- **Benutzerdefinierte Module:**
+    - `modules.msg_generate_new_filename`:
+        - **Funktion:** `generate_new_msg_filename`
+    - `utils.file_handling`:
+        - **Funktionen:** `rename_file`, `test_file_access`, `set_file_creation_date`, `set_file_modification_date`
+        - **Enums:** `FileAccessStatus`, `FileOperationResult`
+    - `modules.msg_handling`:
+        - **Funktionen:** `create_log_file`, `log_entry`
+    - `utils.testset_preparation`:
+        - **Funktion:** `prepare_test_directory`
+    - `utils.pdf_generation`:
+        - **Funktion:** `generate_pdf_from_msg`
 
-## Funktionen und Prozesse
+## Globale Variablen
+### Verzeichnisse
+- **SOURCE_DIRECTORY_TEST_DATA:** Basispfad für Sample-Testdaten.
+- **TARGET_DIRECTORY_TEST_DATA:** Zielverzeichnis für die Tests.
+- **TARGET_DIRECTORY:** Hauptzielverzeichnis – initial leer.
+- **MAX_PATH_LENGTH:** Maximale erlaubte Pfadlänge (Standard: **260**).
 
-### 1. **Extraktion von Metadaten**
-- Die relevanten Metadaten umfassen:
-    - **Betreff** der E-Mail.
-    - **Absender** und **Empfänger**.
-    - **Datum** der E-Mail.
-- Sonderzeichen und ungültige Zeichen in den Metadaten werden automatisch bereinigt, um gültige Dateinamen zu erstellen.
+### Logging und Excel-Log-Verzeichnisse
+- **excel_log_directory:** Verzeichnis für Excel-Logs.
+- **excel_log_basename:** Basisname der Excel-Logdatei.
+- **excel_log_file_path:** Kombinierter Pfad und Dateiname der Excel-Logdatei.
+- **debug_log_directory:** Verzeichnis für Debug-Logs.
+- **prog_log_file_path:** Kombinierter Pfad und Dateiname für das Programm-Log.
 
-### 2. **Umbenennung von Dateien**
-- Neue Dateinamen werden gemäß eines vordefinierten Schemas erstellt.
-- Das Modul überprüft Namenskonflikte und sorgt für eindeutige Benennungen.
-- Unterstützt das Speichern in spezifizierte Zielverzeichnisse.
+### Weitere Variablen
+- **LOG_TABLE_HEADER:** Spaltennamen für die Generierung der Excel-Logdatei.
 
-### 3. **Fehlerbehandlung**
-- Erkennt fehlerhafte oder beschädigte MSG-Dateien und dokumentiert diese im Log.
-- Vermeidet Konflikte durch vorhandene Dateien mit ähnlichen Namen.
-- Gibt Warnungen und Fehler zu verarbeiteten Dateien aus.
+## Wichtige Funktionen
+### `setup_logging`
+- **Beschreibung:** Konfiguriert das Logging-System basierend auf Debug-Modus und einer angegebenen Logdatei.
+- **Parameter:**
+    - `file`: Pfad zur Logdatei.
+    - `debug`: Debug-Modus (Boolean).
 
-### 4. **Protokollierung**
-- Erstellt ausführliche Protokolle aller umbenannten Dateien.
-- Dokumentiert auftretende Fehler und problematische Dateien.
-- Logdaten können für weitere Analysen exportiert werden.
+### Hauptprogramm
+Das Hauptprogramm wird mit einem `if __name__ == '__main__':` Block gestartet. Es enthält folgende Kernbereiche:
+1. **Argumentenparser:**
+    - Verarbeitet Kommandozeilenargumente für verschiedene Funktionen wie `--no_test_run`, `--init_testdata`, `--set_filedate`, und viele weitere.
+2. **Initialisierung von Verzeichnissen:**
+    - Prüft und erstellt Ziel- und Testdaten-Verzeichnisse.
+3. **Dateiverarbeitung:**
+    - Durchläuft die angegebenen Verzeichnisse rekursiv (optional: rekursive Suche abschaltbar).
+    - Überprüft Dateizugriff (Lesen/Schreiben).
+    - Führt ggf. verschiedene Operationen durch, darunter:
+        - Umbenennen von MSG-Dateien.
+        - Löschen von doppelten Dateien.
+        - Setzen von Zeitstempeln auf das Versanddatum der E-Mail.
+        - Generieren eines PDFs (optional).
 
-### 5. **Zusätzliche Features**
-- **Testmodus**:
-    - Führt den kompletten Umbenennungsprozess durch, ohne tatsächlich Dateien zu ändern.
-    - Ideal, um die Konfiguration vor der endgültigen Ausführung zu prüfen.
-- Unterstützt flexible Zielverzeichnisse und konfigurierte Umbenennungsschemata.
+### Kernelemente der Verarbeitung
+#### Verarbeitung der Dateien
+- Überprüfung der Dateiendung `.msg`.
+- Prüfung des Zugriffs (Lesen/Schreiben) mit `test_file_access`.
+- Generieren eines neuen Dateinamens mit `generate_new_msg_filename`.
+- Umbenennen der Datei mit `rename_file` (abhängig vom Testlauf-Modus).
+- Optionale Anpassung von Erstellungs- und Änderungsdatum mit `set_file_creation_date` und `set_file_modification_date`.
 
----
+#### Logging
+- Protokolliert die Verarbeitungsergebnisse in einer Excel-Datei sowie einer Debug-Logdatei.
 
-## Verwendung
+### Schleifensteuerung
+Nach Abschluss der rekursiven Suche wird die Schleife beendet.
 
-Das Modul kann in Szenarien eingesetzt werden, in denen E-Mail-Dateien (MSG-Dateien) in großer Menge verarbeitet und organisiert werden müssen. Es eignet sich beispielsweise für:
+## Kommandozeilenparameter
+Das Skript unterstützt zahlreiche Parameter, die über die Kommandozeile übergeben werden können:
 
-- Elektronische Archivierung von E-Mails.
-- Vorgaben für einheitliche Dateinamen in Unternehmensstrukturen.
-- Schnellere und durchsuchbare Organisation von E-Mails.
+| Parameter                     | Beschreibung                                                                                       | Beispielwert          |
+|-------------------------------|---------------------------------------------------------------------------------------------------|-----------------------|
+| `--no_test_run` / `-ntr`      | Testmodus aktivieren (ohne Dateioperationen).                                                    | `False`              |
+| `--init_testdata` / `-it`     | Zielverzeichnis initialisieren und mit Testdaten füllen.                                         | `True`               |
+| `--set_filedate` / `-fd`      | Zeitstempel der Dateien anpassen.                                                                | `False`              |
+| `--debug_mode` / `-db`        | Debug-Modus (zusätzliche Logs).                                                                  | `True`               |
+| `--search_directory` / `-sd`  | Verzeichnis, das durchsucht werden soll.                                                          | `./data/sample_files`|
+| `--excel_log_basename` / `-elb` | Basisname für die Logdatei im Excel-Format.                                                     | `log_file`           |
+| `--excel_log_directory` / `-elf` | Zielverzeichnis der Excel-Logdatei.                                                           | `./`                 |
+| `--debug_log_directory` / `-dlf` | Zielverzeichnis der Debug-Logdatei.                                                           | `./logs`             |
+| `--no_shorten_path_name` / `-spn` | Pfadlängenbegrenzung deaktivieren.                                                           | `False`              |
+| `--generate_pdf` / `-pdf`     | Aus MSG-Dateien PDFs generieren.                                                                | `True`               |
+| `--overwrite_pdf` / `-opdf`   | Bereits existierende PDFs überschreiben.                                                        | `False`              |
+| `--recursive_search` / `-rs`  | Verzeichnis rekursiv nach MSG-Dateien durchsuchen.                                              | `False`              |
 
----
+## Ergebnisse
+Am Ende der Verarbeitung erstellt das Skript eine Auswertung in der Konsole sowie in den Logs. Die wichtigsten Kennzahlen umfassen:
+- Anzahl gefundener MSG-Dateien
+- Anzahl erfolgreich umbenannter Dateien
+- Anzahl aufgetretener Probleme
+- Anzahl gekürzter Dateinamen
+- Statistiken über doppelte Dateien und gelöschte Duplikate
 
-## Hinweise zur Nutzung
+## Benutzungsbeispiel
+```bash
+python script.py --init_testdata --set_filedate --debug_mode --generate_pdf --recursive_search
+```
 
-1. **Vorbereitung**:
-    - Stellen Sie sicher, dass alle Abhängigkeiten für das Lesen von MSG-Dateien installiert sind.
-    - Konfigurieren Sie das gewünschte Namensschema vor der Nutzung.
-
-2. **Konfigurierbarer Testmodus**:
-    - Nutzen Sie den Testmodus, um den Umbenennungsprozess zu simulieren, ohne Dateien zu verändern.
-    - Der Testmodus hilft, potenzielle Probleme frühzeitig zu identifizieren.
-
-3. **Flexibilität**:
-    - Definieren Sie Zielverzeichnisse und andere Parameter entsprechend Ihren Anforderungen.
-
----
-
-## Beispiel für den Prozessfluss
-
-1. Das Modul durchsucht ein Zielverzeichnis nach `.msg`-Dateien.
-2. Relevante Metadaten werden aus den Dateien extrahiert:
-    - Betreff: `Projektstatus-Update`
-    - Datum: `2023-11-15`
-    - Absender: `max.mustermann@example.com`
-3. Basierend auf diesen Daten wird ein neuer Dateiname erstellt, z. B.:
-    - `2023-11-15_Projektstatus-Update.msg`
-4. Die Datei wird (optional) umbenannt und im Zielverzeichnis gespeichert.
-5. Protokolle werden erstellt, um die Verarbeitung zu dokumentieren.
-
----
-
-## Anforderungen
-
-- Unterstützung für MSG-Dateien (z. B. durch Abhängigkeiten wie `extract-msg` oder ähnliche Bibliotheken).
-- Python-Umgebung mit den erforderlichen Modulen für Datei- und Metadatenoperationen.
-- Konfigurierbare Details wie Zielverzeichnisse, Logformate und das gewünschte Namensschema.
+Dieses Kommando initialisiert die Testdaten, passt Zeitstempel an, aktiviert den Debug-Modus, generiert PDFs und führt eine rekursive Suche durch.
 
 ---
 
 ## Fazit
-
-Das Modul `msg_file_renamer.py` ist ein leistungsstarkes Werkzeug zur effizienten Organisation und Umbenennung von MSG-Dateien auf Basis ihrer Metadaten. Es unterstützt sowohl echte Dateioperationen als auch simulierte Testläufe, um den Prozess vor der Ausführung umfassend prüfen zu können. Dank Protokollierung und Fehlerbehandlung gewährleistet es Zuverlässigkeit und Transparenz in der Verarbeitung.
-
----
+Dieses Skript ist äußerst flexibel und bietet eine Vielzahl von Funktionen zur Verarbeitung und Verwaltung von MSG-Dateien. Die saubere Struktur ermöglicht eine einfache Anpassung an individuelle Anforderungen, wie z.B. die Integration zusätzlicher Parameter oder die Erweiterung der Dateiverarbeitung.
