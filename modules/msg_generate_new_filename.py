@@ -54,11 +54,11 @@ class MsgFilenameResult:
 logger = logging.getLogger(__name__)
 
 # Liste der bekannten Email-Absender aus einer CSV-Datei
-LIST_OF_KNOWN_SENDERS = r'D:\Dev\pycharm\MSGFileRenamer\config\known_senders_private.csv'
+LIST_OF_KNOWN_SENDERS = r'.\config\known_senders_private.csv'
 
 PRINT_RESULT = False
 
-def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
+def generate_new_msg_filename(msg_path_and_filename, file_list_of_known_senders=LIST_OF_KNOWN_SENDERS, max_path_length=260):
     """
     generate_new_msg_filename(msg_path_and_filename, max_path_length=260)
 
@@ -74,13 +74,24 @@ def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
     Verwendung:
     Importieren Sie diese Funktion in Ihr Skript, um neue Dateinamen für MSG-Dateien zu generieren, die auf den Metadaten der Dateien basieren.
     """
+    print(f"\t\tVersuche einen neuen Namen für die MSG-Datei zu generieren.")
+    print(f"\t\t***********************************************************")
 
     format_string = "%Y%m%d-%Huhr%M"  # Beispiel für das gewünschte Format für Zeitstempel
 
     # 0. Schritt: Laden der bekannten Sender aus der CSV-Datei
-    logger.debug(f"\t\tVersuche Einlesen Liste bekannter Email-Absender aus CSV-Datei: {LIST_OF_KNOWN_SENDERS}'")  # Debugging-Ausgabe: Log-File
-    known_senders_df = load_known_senders(LIST_OF_KNOWN_SENDERS)  # Laden der bekannten Sender aus der CSV-Datei als Dataframe
-    logger.debug(f"Liste der bekannten Email-Absender: {known_senders_df}'")  # Debugging-Ausgabe: Log-File
+    logger.debug(f"\t\tSchritt 0: Versuche Einlesen Liste bekannter Email-Absender aus CSV-Datei: {file_list_of_known_senders}'")  # Debugging-Ausgabe: Log-File
+    # Prüfen, ob die Datei existiert und lesbar ist
+    if os.path.exists(file_list_of_known_senders) and os.access(file_list_of_known_senders, os.R_OK):
+        print(f"\t\tSchritt 0: Die CSV-Datei '{file_list_of_known_senders}' ist zugänglich und lesbar.")
+        logger.debug(f"Schritt 0: Die CSV-Datei '{file_list_of_known_senders}' ist zugänglich und lesbar.")  # Debugging-Ausgabe: Log-File
+
+        known_senders_df = load_known_senders(file_list_of_known_senders)  # Laden der bekannten Sender aus der CSV-Datei als Dataframe
+        logger.debug(f"Schritt 0: Liste der bekannten Email-Absender: {known_senders_df}'")  # Debugging-Ausgabe: Log-File
+        exist_csv_file = True
+    else:
+        print(f"\t\tSchritt 0: Die CSV-Datei '{file_list_of_known_senders}' ist nicht zugänglich bzw. nicht lesbar.")
+        exist_csv_file = False
 
     # Auslesen des msg-Objektes
     msg_object = get_msg_object(msg_path_and_filename)
@@ -110,17 +121,22 @@ def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
     #  3. Schritt: Wenn im 2. Schritt keine Absender-Email gefunden wurde, dann in der Liste der bekannten Email-Absender nachsehen, ob der Absendername enthalten ist
     if not parsed_sender_email["contains_sender_email"]:
 
-        known_sender_row = known_senders_df[known_senders_df['sender_name'].str.contains(parsed_sender_email["sender_name"], na=False, regex=False)]
+        if exist_csv_file:
+            known_sender_row = known_senders_df[known_senders_df['sender_name'].str.contains(parsed_sender_email["sender_name"], na=False, regex=False)]
 
-        if not known_sender_row.empty:
-            parsed_sender_email["sender_email"] = known_sender_row.iloc[0]["sender_email"]
-            parsed_sender_email["contains_sender_email"] = True
-            print(f"\t\tSchritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Console
-            logger.debug(f"Schritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Log-File
+            if not known_sender_row.empty:
+                parsed_sender_email["sender_email"] = known_sender_row.iloc[0]["sender_email"]
+                parsed_sender_email["contains_sender_email"] = True
+                print(f"\t\tSchritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Console
+                logger.debug(f"Schritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Log-File
+            else:
+                parsed_sender_email["contains_sender_email"] = False
+                print(f"\t\tSchritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Console
+                logger.warning(f"Schritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Log-File
         else:
-            parsed_sender_email["contains_sender_email"] = False
-            print(f"\t\tSchritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Console
-            logger.warning(f"Schritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Log-File
+            print(f"\t\tSchritt 3: Kein Sich in der CSV-Date möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Console
+            logger.debug(f"Schritt 3: Kein Sich in der CSV-Date möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Log-File
+
     else:
         print(f"\t\tSchritt 3: Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich.")  # Debugging-Ausgabe: Console
         logger.warning(f"Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich.")
@@ -182,6 +198,8 @@ def generate_new_msg_filename(msg_path_and_filename, max_path_length=260):
         is_msg_filename_truncated = False
         print(f"\t\tSchritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Log-File
+
+    print(f"\t\t***********************************************************")
 
     # Ausgabe aller Informationen
     if PRINT_RESULT:

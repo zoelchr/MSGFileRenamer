@@ -209,4 +209,4 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
         # Speichern der PDF-Datei
         pdf.output(pdf_path_and_filename)
 
-        print(f"Die PDF wurde unter '{os.path.abspath(pdf_path_and_filename)}' gespeichert.")
+        print(f"\tDie PDF wurde unter '{os.path.abspath(pdf_path_and_filename)}' gespeichert.")
