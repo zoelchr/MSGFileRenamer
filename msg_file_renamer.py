@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 msg_file_renamer.py
 
@@ -107,6 +108,7 @@ SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-long'
 # SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short'
 TARGET_DIRECTORY_TEST_DATA = r'.\tests\functional\testdir'
 TARGET_DIRECTORY = ""
+LIST_OF_KNOWN_SENDERS = r'.\config\known_senders_private.csv' # Liste der bekannten Email-Absender aus einer CSV-Datei
 
 # Maximal zulässige Pfadlänge für Windows 11
 MAX_PATH_LENGTH = 260
@@ -135,7 +137,9 @@ if __name__ == '__main__':
     parser.add_argument("-spn", "--no_shorten_path_name", default=False, action="store_true", help="True/False für kein Kürzen des Pfades bei Überlänge (Default=False)")
     parser.add_argument("-pdf", "--generate_pdf", default=False, action="store_true", help="True/False für Generieren eines PDF-Files aus MSG-Dateien (Default=False)")
     parser.add_argument("-opdf", "--overwrite_pdf", default=False, action="store_true", help="True/False für Überschreiben eines bereits existierende PDF-Files aus MSG-Dateien (Default=False)")
-    parser.add_argument("-rs", "--recursive_search", default=False, action="store_true", help="True/False für die rekursive Suche nach MSG-Dateien (Default=False)")
+    parser.add_argument("-rs", "--recursive_search", default=False, action="store_true", help="True/False für die rekursive Suche nach MSG-Dateien (Default=False)"),
+    parser.add_argument("-ucf", "--use_knownsender_file", default=False, action="store_true", help="True/False für die Nutzung des Config-Files (Default=False)"),
+    parser.add_argument("-cf", "--knownsender_file", type=str, default="LIST_OF_KNOWN_SENDERS", help="CSV-Datei mit Liste der bekannten Absender")
     args, unknown = parser.parse_known_args()
 
     # Unbekannte Parameter ausgeben und Programm beenden
@@ -155,6 +159,8 @@ if __name__ == '__main__':
     GENERATE_PDF = args.generate_pdf
     OVERWRITE_PDF = args.overwrite_pdf
     RECURSIVE_SEARCH = args.recursive_search
+    USE_KNOWNSENDER_FILE = args.use_knownsender_file
+    KNOWNSENDER_FILE = args.knownsender_file
 
     # Start Ausgabe auf Console
     print(f"\nTestlauf: {TEST_RUN}\nTestverzeichnis initialisieren: {INIT_TESTDATA}\nZeitstempel der MSG-dateien anpassen: {SET_FILEDATE}\nDebug-Modus: {DEBUG_MODE}\n")
@@ -231,6 +237,8 @@ if __name__ == '__main__':
     msg_file_modification_date_count = 0
     msg_file_modification_date_problem_count = 0
     msg_file_same_name_count = 0
+    pdf_file_generated = 0
+    pdf_file_skipped = 0
 
     # Durchsuchen des Zielverzeichnisses nach MSG-Dateien
     # pathname = Verzeichnisname, dirs = Unterverzeichnisse, files = List von Dateien
@@ -240,9 +248,11 @@ if __name__ == '__main__':
             logging.debug(f"\n******************************************************'")  # Debugging-Ausgabe: Log-File
 
             # Initialisierung der Variable
-            is_msg_file_name_unchanged = False
+            #is_msg_file_name_unchanged = False
             is_msg_file_doublette = False
             is_msg_file_doublette_deleted = False
+            is_pdf_file_skipped = False
+            is_pdf_file_generated = False
 
             # Überprüfen, ob die Datei die Endung .msg hat
             if filename.lower().endswith('.msg'):
@@ -275,7 +285,7 @@ if __name__ == '__main__':
                     logging.debug(f"\tSchreibender Zugriff auf die Datei möglich: {filename}")  # Debugging-Ausgabe: Log-File
 
                     # Neuen Datenamen erzeugen
-                    new_msg_filename_collection = generate_new_msg_filename(path_and_file_name)
+                    new_msg_filename_collection = generate_new_msg_filename(path_and_file_name, use_list_of_known_senders=USE_KNOWNSENDER_FILE, file_list_of_known_senders=KNOWNSENDER_FILE)
 
                     # Wenn Dateiname gekürzt wurde, dann Zähler erhöhen
                     # if new_msg_filename_collection.is_msg_filename_truncated: msg_file_shorted_name_count += 1
@@ -319,7 +329,7 @@ if __name__ == '__main__':
                                 logging.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
                                 msg_file_doublette_count += 1  # Erfolgszähler erhöhen
                                 is_msg_file_doublette = True # MSG-Datei mit gleichem neuen Namen existiert bereits - also Doublette
-                                is_msg_file_for_change_date_available = True  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
+                                is_msg_file_for_change_date_available = False  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
 
                                 # Versuche Doublette zu löschen, wenn nicht Test
                                 if not TEST_RUN:
@@ -351,11 +361,12 @@ if __name__ == '__main__':
                                         print(f"\tDatei ist eine Doublette: '{filename}'")
                                         logging.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_doublette_count += 1  # Erfolgszähler erhöhen
-                                        is_msg_file_for_change_date_available = True  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
+                                        is_msg_file_for_change_date_available = False  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
                                     else:
                                         print(f"\tUmbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")
                                         logging.debug(f"Umbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_problem_count += 1  # Problemzähler erhöhen
+                                        is_msg_file_for_change_date_available = False
 
                         # Wenn die Datei erfolgreich umbenannt wurde oder die Datei bereits mit korrekten Namen existiert und kein Testlauf durchgeführt wird
                         # dann soll das Erstellungsdatum auf das Versanddatum gesetzt werden
@@ -403,8 +414,10 @@ if __name__ == '__main__':
                             # Wenn der -opdf Flag False ist und die PDF-Datei bereits existiert, wird sie nicht überschrieben
                             if not OVERWRITE_PDF and os.path.exists(pdf_path):
                                 logging.info(f"PDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
+                                pdf_file_skipped += 1
                             else:
                                 generate_pdf_from_msg(new_path_and_file_name, 800)
+                                pdf_file_generated += 1
 
                 elif FileAccessStatus.READABLE in access_result:
                     print(f"\tNur lesender Zugriff auf die Datei möglich.")
@@ -431,9 +444,11 @@ if __name__ == '__main__':
                     "Neue nicht gekürzte Pfadlänge": new_path_and_file_name_length,
                     "Neuer gekürzter Dateiname": new_msg_filename_collection.new_truncated_msg_filename,
                     "Kürzung Dateiname erforderlich": new_msg_filename_collection.is_msg_filename_truncated,
-                    "Alter und neuer Name sind gleich": is_msg_file_name_unchanged,
+                    #"Alter und neuer Name sind gleich": is_msg_file_name_unchanged,
                     "Doublette": is_msg_file_doublette,
-                    "Doublette gelöscht": is_msg_file_doublette_deleted
+                    "Doublette gelöscht": is_msg_file_doublette_deleted,
+                    "PDF erstellt": is_pdf_file_generated,
+                    "PDF übersprungen": is_pdf_file_skipped
                 }
 
                 # Eintrag ins Logfile hinzufügen
@@ -446,15 +461,31 @@ if __name__ == '__main__':
     print(f"\nTestlauf: {TEST_RUN}")
     print(f"Testverzeichnis initialisieren: {INIT_TESTDATA}")
     print(f"Zeitstempel der MSG-dateien anpassen: {SET_FILEDATE}")
-    print(f"\nAnzahl der gefundenen MSG-Dateien: {msg_file_count}")
-    print(f"Anzahl der umbenannten Dateien: {msg_file_renamed_count}")
+    print(f"\nErgebnisse (auch bei Testlauf):")
+    print(f"*********************************")
+    print(f"Anzahl der gefundenen MSG-Dateien: {msg_file_count}")
+    print(f"Anzahl der bereits mit korrekten Namen existierenden MSG-Dateien: {msg_file_same_name_count}")
     print(f"Anzahl der Dateien mit Problemen: {msg_file_problem_count}")
     print(f"Anzahl gekürzte Dateinamen: {msg_file_shorted_name_count}")
-    print(f"Anzahl gefundener Doubletten: {msg_file_doublette_count}")
-    print(f"Anzahl gelöschter Doubletten: {msg_file_doublette_deleted_count}")
-    print(f"Anzahl nicht gelöschter Doubletten: {msg_file_doublette_deleted_problem_count}")
-    print(f"Anzahl MSG-Dateien mit geändertem Erstellungsdatum: {msg_file_file_creation_date_count}")
-    print(f"Anzahl MSG-Dateien mit nicht geändertem Erstellungsdatum: {msg_file_creation_date_problem_count}")
-    print(f"Anzahl MSG-Dateien mit geändertem Änderungsdatum: {msg_file_modification_date_count}")
-    print(f"Anzahl MSG-Dateien mit nicht geändertem Änderungsdatum: {msg_file_modification_date_problem_count}")
-    print(f"Alter und neuer Dateiname sind gleich: {msg_file_same_name_count}")
+
+    if not TEST_RUN:
+        print(f"\nErgebnisse der Anpassungen:")
+        print(f"*****************************")
+        print(f"Anzahl der umbenannten Dateien: {msg_file_renamed_count}")
+        print(f"Anzahl gefundener Doubletten: {msg_file_doublette_count}")
+        print(f"Anzahl gelöschter Doubletten: {msg_file_doublette_deleted_count}")
+        print(f"Anzahl nicht gelöschter Doubletten: {msg_file_doublette_deleted_problem_count}")
+
+        if SET_FILEDATE:
+            print(f"\nErgebnisse bei Anpassung File-Datum:")
+            print(f"**************************************")
+            print(f"Anzahl MSG-Dateien mit geändertem Erstellungsdatum: {msg_file_file_creation_date_count}")
+            print(f"Anzahl MSG-Dateien mit nicht geändertem Erstellungsdatum: {msg_file_creation_date_problem_count}")
+            print(f"Anzahl MSG-Dateien mit geändertem Änderungsdatum: {msg_file_modification_date_count}")
+            print(f"Anzahl MSG-Dateien mit nicht geändertem Änderungsdatum: {msg_file_modification_date_problem_count}")
+
+        if GENERATE_PDF:
+            print(f"\nErgebniss der PDF-Erzeugung:")
+            print(f"******************************")
+            print(f"Anzahl der erzeugten PDF-Dateien: {pdf_file_generated}")
+            print(f"Anzahl der übersprungenen PDF-Dateien: {pdf_file_skipped}")

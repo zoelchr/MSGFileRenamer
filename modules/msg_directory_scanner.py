@@ -1,4 +1,4 @@
-"""
+﻿"""
 msg_directory_scanner.py
 
 Dieses Modul durchsucht ein angegebenes Verzeichnis und alle seine Unterverzeichnisse nach MSG-Dateien.

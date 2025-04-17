@@ -4,21 +4,27 @@ setlocal enabledelayedexpansion
 :: ============================================================================
 :: Anleitung:
 :: Dieses Batch-Skript konfiguriert und startet das msg_file_renamer Modul.
-:: Es werden verschiedene Optionen über die Kommandozeile definiert, die darüber
-:: entscheiden, ob ein Testlauf durchgeführt wird, ob Dateidaten angepasst werden,
-:: ob PDF-Dateien aus MSG-Dateien erzeugt und ggf. überschrieben werden und ob der
+:: Es werden verschiedene Optionen Ã¼ber die Kommandozeile definiert, die darÃ¼ber
+:: entscheiden, ob ein Testlauf durchgefÃ¼hrt wird, ob Dateidaten angepasst werden,
+:: ob PDF-Dateien aus MSG-Dateien erzeugt und ggf. Ã¼berschrieben werden und ob der
 :: Suchpfad rekursiv abgearbeitet wird.
 ::
-:: Mögliche Argumente:
-::   - -ntr / --no_test_run:       Testlauf aktivieren (keine echten File-Änderungen)
-::   - -fd / --set_filedate:        Dateidatum anpassen (False = Dateidatum nicht ändern)
-::   - -sd / --search_directory:    Such-Verzeichnis für MSG-Dateien
-::   - -spn / --no_shorten_path_name: Kein Kürzen langer Pfadnamen
-::   - -pdf / --generate_pdf:       PDF-Erzeugung aus MSG-Dateien aktivieren
-::   - -opdf / --overwrite_pdf:     Bereits vorhandene PDF-Dateien überschreiben (wenn aktiviert)
-::   - -rs / --recursive_search:    Rekursive Suche im Zielverzeichnis (optional)
+:: MÃ¶gliche Argumente:
+::   -ntr / --no_test_run:          Testlauf aktivieren (keine echten File-Ã„nderungen)
+::   -fd / --set_filedate:          Dateidatum anpassen (False = Dateidatum nicht Ã¤ndern)
+::   -sd / --search_directory:      Such-Verzeichnis fÃ¼r MSG-Dateien
+::   -spn / --no_shorten_path_name: Kein KÃ¼rzen langer Pfadnamen
+::   -pdf / --generate_pdf:         PDF-Erzeugung aus MSG-Dateien aktivieren
+::   -opdf / --overwrite_pdf:       Bereits vorhandene PDF-Dateien Ã¼berschreiben (wenn aktiviert)
+::   -rs / --recursive_search:      Rekursive Suche im Zielverzeichnis (optional)
+::   -ucf / --use_knownsender_file: CSV-Datei mit Liste den bekannten Sender nutzen (wenn aktiviert)
+::   -cf / --knownsender_file:      CSV-Datei mit Liste der bekannten Absender (Default: ".\config\known_senders_private.csv")
 ::
-:: Die einzutragenden Einstellungen können während des Skriptablaufs interaktiv
+:: Die einzutragenden Einstellungen kÃ¶nnen wÃ¤hrend des Skriptablaufs interaktiv
+:: festgelegt oder der Default-Wert verwendet werden.
+:: ============================================================================
+::
+:: Die einzutragenden Einstellungen kÃ¶nnen wÃ¤hrend des Skriptablaufs interaktiv
 :: festgelegt oder der Default-Wert verwendet werden.
 :: ============================================================================
 
@@ -35,6 +41,8 @@ set "SETFILEDATE="
 set "GENERATEPDF="
 set "OVERWRITEPDF="
 set "NOSHORTENPATHNAME="
+set "USEKNOWNSENDERFILE=--use_knownsender_file"
+set "KNOWNSENDERFILE=.\config\known_senders_private.csv"
 
 :: Verzeichnis der Batch-Datei ermitteln
 set "SCRIPT_DIR=%~dp0"
@@ -44,12 +52,15 @@ set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"  :: letztes Backslash entfernen
 :: 1. Benutzerfrage: Default-Konfiguration verwenden
 :: =======================================================
 echo =====================================================
-echo   *** Bitte Konfiguration prüfen ***
-echo       - Testlauf (Keine File-Änderung!)
+echo   *** Bitte Konfiguration prÃ¼fen ***
+echo       - Testlauf (Keine File-Ã„nderung!)
 echo       - Keine rekursive Suche
-echo       - Dateinamen werden gekürzt
+echo       - Dateinamen werden gekÃ¼rzt
 echo       - Keine Erzeugung von PDF-Dateien
-echo       - Zielverzeichnis für MSG-Suche erforderlich
+echo       - CSV-Datei mit Liste bekannter Absender nutzen?
+echo       - CSV-Datei mit Liste der bekannten Absender
+echo         (Default: ".\config\known_senders_private.csv")
+echo       - Zielverzeichnis fÃ¼r MSG-Suche erforderlich
 echo         oder Default-Zielverzeichnis DEFAULT_ZIELPFAD
 echo =====================================================
 echo.
@@ -64,7 +75,7 @@ if /i "%ANTWORT%"=="A" (
 ) else if /i "%ANTWORT%"=="J" (
     echo.
     echo Du hast mit JA geantwortet.
-    rem Abfrage der Konfiguration überspringen...
+    rem Abfrage der Konfiguration Ã¼berspringen...
     goto :ZIELPFADPRE
 ) else if /i "%ANTWORT%"=="N" (
     echo.
@@ -76,7 +87,7 @@ if /i "%ANTWORT%"=="A" (
     goto :ENDE
 ) else (
     echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo UngÃ¼ltige Eingabe. Bitte J, N oder A eingeben.
     echo.
     goto :ABFRAGE1
 )
@@ -90,16 +101,16 @@ echo =====================================================
 echo.
 
 :Abfrage2
-set /p ANTWORT="Möchtest du einen Testlauf durchführen? (J/N/A)"
+set /p ANTWORT="MÃ¶chtest du einen Testlauf durchfÃ¼hren? (J/N/A)"
 if /i "%ANTWORT%"=="N" (
     set "NOTESTLAUF=--no_test_run"
     echo .
-    echo Folgendes Argument wird übernommen: !NOTESTLAUF!
+    echo Folgendes Argument wird Ã¼bernommen: !NOTESTLAUF!
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="J" (
     echo.
-    echo Es wird ein Testlauf ohne Änderungen an Dateien durchgeführt.
-    rem Einige Abfragen können übersprungen werden...
+    echo Es wird ein Testlauf ohne Ã„nderungen an Dateien durchgefÃ¼hrt.
+    rem Einige Abfragen kÃ¶nnen Ã¼bersprungen werden...
     goto :Abfrage6pre
 ) else if /i "%ANTWORT%"=="A" (
     echo.
@@ -108,7 +119,7 @@ if /i "%ANTWORT%"=="N" (
     goto :ENDE
 ) else (
     echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo UngÃ¼ltige Eingabe. Bitte J, N oder A eingeben.
     echo.
     goto :ABFRAGE2
 )
@@ -123,15 +134,15 @@ echo =====================================================
 echo.
 
 :Abfrage3
-set /p ANTWORT="Möchtest du das Dateidatum anpassen? (J/N/A)"
+set /p ANTWORT="MÃ¶chtest du das Dateidatum anpassen? (J/N/A)"
 if /i "%ANTWORT%"=="J" (
     set "SETFILEDATE=--set_filedate"
     echo .
-    echo Folgendes Argument wird übernommen: !SETFILEDATE!
+    echo Folgendes Argument wird Ã¼bernommen: !SETFILEDATE!
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="N" (
     echo.
-    echo Das Filedatum der Dateien wird nicht geändert.
+    echo Das Filedatum der Dateien wird nicht geÃ¤ndert.
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="A" (
     echo.
@@ -140,7 +151,7 @@ if /i "%ANTWORT%"=="J" (
     goto :ENDE
 ) else (
     echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo UngÃ¼ltige Eingabe. Bitte J, N oder A eingeben.
     echo.
     goto :ABFRAGE3
 )
@@ -155,16 +166,16 @@ echo =====================================================
 echo.
 
 :Abfrage4
-set /p ANTWORT="Möchtest du zusätzliche PDF-Dateien erzeugen? (J/N/A)"
+set /p ANTWORT="MÃ¶chtest du zusÃ¤tzliche PDF-Dateien erzeugen? (J/N/A)"
 if /i "%ANTWORT%"=="J" (
     set "GENERATEPDF=--generate_pdf"
     echo .
-    echo Folgendes Argument wird übernommen: !GENERATEPDF!
+    echo Folgendes Argument wird Ã¼bernommen: !GENERATEPDF!
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="N" (
     echo.
-    echo Es werden keine zusätzliche PDF-Dateien erzeugt.
-    rem Die nächste Abfrage ist dann überflüssig
+    echo Es werden keine zusÃ¤tzliche PDF-Dateien erzeugt.
+    rem Die nÃ¤chste Abfrage ist dann Ã¼berflÃ¼ssig
     goto :Abfrage6pre
 ) else if /i "%ANTWORT%"=="A" (
     echo.
@@ -173,30 +184,30 @@ if /i "%ANTWORT%"=="J" (
     goto :ENDE
 ) else (
     echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo UngÃ¼ltige Eingabe. Bitte J, N oder A eingeben.
     echo.
     goto :ABFRAGE4
 )
 
 :: =======================================================
-:: 5. Benutzerfrage: PDF-Dateien überschreiben?
+:: 5. Benutzerfrage: PDF-Dateien Ã¼berschreiben?
 :: =======================================================
 echo.
 echo =====================================================
-echo   *** PDF-Dateien überschreiben? ***
+echo   *** PDF-Dateien Ã¼berschreiben? ***
 echo =====================================================
 echo.
 
 :Abfrage5
-set /p ANTWORT="Möchtest du bestehende PDF-Dateien überschreien? (J/N/A)"
+set /p ANTWORT="MÃ¶chtest du bestehende PDF-Dateien Ã¼berschreien? (J/N/A)"
 if /i "%ANTWORT%"=="J" (
     set "OVERWRITEPDF=--overwrite_pdf"
     echo .
-    echo Folgendes Argument wird übernommen: !OVERWRITEPDF!
+    echo Folgendes Argument wird Ã¼bernommen: !OVERWRITEPDF!
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="N" (
     echo.
-    echo Es werden keine zusätzliche PDF-Dateien erzeugt.
+    echo Es werden keine zusÃ¤tzliche PDF-Dateien erzeugt.
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="A" (
     echo.
@@ -205,31 +216,31 @@ if /i "%ANTWORT%"=="J" (
     goto :ENDE
 ) else (
     echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo UngÃ¼ltige Eingabe. Bitte J, N oder A eingeben.
     echo.
     goto :ABFRAGE5
 )
 
 :Abfrage6pre
 :: =======================================================
-:: 6. Benutzerfrage: Dateinamen kürzen?
+:: 6. Benutzerfrage: Dateinamen kÃ¼rzen?
 :: =======================================================
 echo.
 echo =====================================================
-echo   *** Dateinamen kürzen? ***
+echo   *** Dateinamen kÃ¼rzen? ***
 echo =====================================================
 echo.
 
 :Abfrage6
-set /p ANTWORT="Möchtest du die Dateinamen kürzen? (J/N/A)"
+set /p ANTWORT="MÃ¶chtest du die Dateinamen kÃ¼rzen? (J/N/A)"
 if /i "%ANTWORT%"=="N" (
     set "NOSHORTENPATHNAME=--no_shorten_path_name"
     echo .
-    echo Folgendes Argument wird übernommen: !NOSHORTENPATHNAME!
+    echo Folgendes Argument wird Ã¼bernommen: !NOSHORTENPATHNAME!
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="J" (
     echo.
-    echo Es werden Datenamen gekürzt.
+    echo Es werden Datenamen gekÃ¼rzt.
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="A" (
     echo.
@@ -238,7 +249,7 @@ if /i "%ANTWORT%"=="N" (
     goto :ENDE
 ) else (
     echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo UngÃ¼ltige Eingabe. Bitte J, N oder A eingeben.
     echo.
     goto :ABFRAGE6
 )
@@ -253,11 +264,11 @@ echo =====================================================
 echo.
 
 :Abfrage7
-set /p ANTWORT="Möchtest du das Verzeichnis rekursiv durchsuchen? (J/N/A)"
+set /p ANTWORT="MÃ¶chtest du das Verzeichnis rekursiv durchsuchen? (J/N/A)"
 if /i "%ANTWORT%"=="J" (
     set "RECURSIVESEARCH=--recursive_search"
     echo .
-    echo Folgendes Argument wird übernommen: !RECURSIVESEARCH!
+    echo Folgendes Argument wird Ã¼bernommen: !RECURSIVESEARCH!
     rem Weiter mit dem Skript...
 ) else if /i "%ANTWORT%"=="N" (
     echo.
@@ -270,7 +281,7 @@ if /i "%ANTWORT%"=="J" (
     goto :ENDE
 ) else (
     echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo UngÃ¼ltige Eingabe. Bitte J, N oder A eingeben.
     echo.
     goto :ABFRAGE7
 )
@@ -289,7 +300,7 @@ echo   %DEFAULT_ZIELPFAD%
 echo.
 
 :ZIELPFAD
-set /p ANTWORT="Möchtest du diesen Pfad verwenden? (J/N/A)"
+set /p ANTWORT="MÃ¶chtest du diesen Pfad verwenden? (J/N/A)"
 
 if /i "%ANTWORT%"=="J" (
     set "ZIELPFAD=%DEFAULT_ZIELPFAD%"
@@ -302,17 +313,17 @@ if /i "%ANTWORT%"=="J" (
     goto :ENDE
 ) else if /i "%ANTWORT%"=="N" (
     echo.
-    set /p ZIELPFAD="Bitte gib den gewünschten Zielpfad ein:"
+    set /p ZIELPFAD="Bitte gib den gewÃ¼nschten Zielpfad ein:"
     rem Weiter mit dem Skript...
 ) else (
     echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo UngÃ¼ltige Eingabe. Bitte J, N oder A eingeben.
     echo.
     goto :ZIELPFAD
 )
 
 :: =============================================
-:: 9. Zielpfad prüfen
+:: 9. Zielpfad prÃ¼fen
 :: =============================================
 if not exist "%ZIELPFAD%\" (
     echo.
@@ -334,9 +345,8 @@ echo.
 :: Aktiviert die virtuelle Python-Umgebung
 call "venv\Scripts\activate"
 
-echo python msg_file_renamer.py %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./"
-python "msg_file_renamer.py" %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./"
-
+echo python msg_file_renamer.py %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
+python "msg_file_renamer.py" %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
 :: =============================================
 :: 11. Hinweis auf Logdatei im Batch-Verzeichnis
 :: =============================================

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Modul: pdf_generation.py
 
@@ -99,6 +100,10 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
     :param MAX_LENGTH_SENDERLIST: Maximale Länge der Empfängerliste im PDF.
     :return: Der Pfad zur erzeugten PDF-Datei.
     """
+
+    # Vorbelegung der Rückgabewerte
+    is_generate_pdf_successful = False
+    pdf_path_and_filename = ""
 
     # PDF erstellen
     pdf = FPDF()
@@ -209,4 +214,12 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
         # Speichern der PDF-Datei
         pdf.output(pdf_path_and_filename)
 
+        is_generate_pdf_successful = True
+
         print(f"\tDie PDF wurde unter '{os.path.abspath(pdf_path_and_filename)}' gespeichert.")
+
+    else:
+        print(f"\tDie MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden. Status: {msg_object['status']}")
+        logger.debug(f"Die MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden. Status: {msg_object['status']}")
+
+    return is_generate_pdf_successful, pdf_path_and_filename

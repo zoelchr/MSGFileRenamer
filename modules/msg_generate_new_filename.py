@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 msg_generate_new_filename.py
 
@@ -18,7 +19,6 @@ from modules.msg_handling import parse_sender_msg_file, \
     load_known_senders, convert_to_utc_naive, format_datetime, \
     custom_sanitize_text, truncate_filename_if_needed, MsgAccessStatus, get_msg_object
 from dataclasses import dataclass
-
 
 @dataclass
 class MsgFilenameResult:
@@ -58,7 +58,7 @@ LIST_OF_KNOWN_SENDERS = r'.\config\known_senders_private.csv'
 
 PRINT_RESULT = False
 
-def generate_new_msg_filename(msg_path_and_filename, file_list_of_known_senders=LIST_OF_KNOWN_SENDERS, max_path_length=260):
+def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=False, file_list_of_known_senders=LIST_OF_KNOWN_SENDERS, max_path_length=260):
     """
     generate_new_msg_filename(msg_path_and_filename, max_path_length=260)
 
@@ -79,18 +79,22 @@ def generate_new_msg_filename(msg_path_and_filename, file_list_of_known_senders=
 
     format_string = "%Y%m%d-%Huhr%M"  # Beispiel für das gewünschte Format für Zeitstempel
 
-    # 0. Schritt: Laden der bekannten Sender aus der CSV-Datei
-    logger.debug(f"\t\tSchritt 0: Versuche Einlesen Liste bekannter Email-Absender aus CSV-Datei: {file_list_of_known_senders}'")  # Debugging-Ausgabe: Log-File
-    # Prüfen, ob die Datei existiert und lesbar ist
-    if os.path.exists(file_list_of_known_senders) and os.access(file_list_of_known_senders, os.R_OK):
-        print(f"\t\tSchritt 0: Die CSV-Datei '{file_list_of_known_senders}' ist zugänglich und lesbar.")
-        logger.debug(f"Schritt 0: Die CSV-Datei '{file_list_of_known_senders}' ist zugänglich und lesbar.")  # Debugging-Ausgabe: Log-File
+    # 0. Schritt: Laden der bekannten Sender aus der Tabelle der bekannten Email-Absender, wenn use_list_of_known_senders ist True
+    if use_list_of_known_senders:
+        logger.debug(f"\t\tSchritt 0: Versuche Einlesen Liste bekannter Email-Absender aus CSV-Datei: {file_list_of_known_senders}'")  # Debugging-Ausgabe: Log-File
+        # Prüfen, ob die Datei existiert und lesbar ist
+        if os.path.exists(file_list_of_known_senders) and os.access(file_list_of_known_senders, os.R_OK):
+            print(f"\t\tSchritt 0: Die Tabelle der bekannten Email-Absender '{file_list_of_known_senders}' ist zugänglich und lesbar.")
+            logger.debug(f"Schritt 0: Die Tabelle der bekannten Email-Absender '{file_list_of_known_senders}' ist zugänglich und lesbar.")  # Debugging-Ausgabe: Log-File
 
-        known_senders_df = load_known_senders(file_list_of_known_senders)  # Laden der bekannten Sender aus der CSV-Datei als Dataframe
-        logger.debug(f"Schritt 0: Liste der bekannten Email-Absender: {known_senders_df}'")  # Debugging-Ausgabe: Log-File
-        exist_csv_file = True
+            known_senders_df = load_known_senders(file_list_of_known_senders)  # Laden der bekannten Sender aus der CSV-Datei als Dataframe
+            logger.debug(f"Schritt 0: Liste der bekannten Email-Absender: {known_senders_df}'")  # Debugging-Ausgabe: Log-File
+            exist_csv_file = True
+        else:
+            print(f"\t\tSchritt 0: Die Tabelle der bekannten Email-Absender '{file_list_of_known_senders}' ist nicht zugänglich bzw. nicht lesbar.")
+            exist_csv_file = False
     else:
-        print(f"\t\tSchritt 0: Die CSV-Datei '{file_list_of_known_senders}' ist nicht zugänglich bzw. nicht lesbar.")
+        print(f"\t\tSchritt 0: Die Tabelle der bekannten Email-Absender wird nicht genutzt.")
         exist_csv_file = False
 
     # Auslesen des msg-Objektes
@@ -118,8 +122,8 @@ def generate_new_msg_filename(msg_path_and_filename, file_list_of_known_senders=
         print(f"\tSchritt 2: Absender-String der MSG-Datei ist fehlerhaft oder unbekannt.")
         logger.debug(f"Schritt 2: Absender-String der MSG-Datei ist fehlerhaft oder unbekannt.")
 
-    #  3. Schritt: Wenn im 2. Schritt keine Absender-Email gefunden wurde, dann in der Liste der bekannten Email-Absender nachsehen, ob der Absendername enthalten ist
-    if not parsed_sender_email["contains_sender_email"]:
+    #  3. Schritt: Wenn im 2. Schritt keine Absender-Email gefunden wurde, dann in der Tabelle der bekannten Absender-Emails nachsehen, ob der Absendername enthalten ist
+    if (not parsed_sender_email["contains_sender_email"]) and (use_list_of_known_senders):
 
         if exist_csv_file:
             known_sender_row = known_senders_df[known_senders_df['sender_name'].str.contains(parsed_sender_email["sender_name"], na=False, regex=False)]
@@ -134,12 +138,12 @@ def generate_new_msg_filename(msg_path_and_filename, file_list_of_known_senders=
                 print(f"\t\tSchritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Console
                 logger.warning(f"Schritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Log-File
         else:
-            print(f"\t\tSchritt 3: Kein Sich in der CSV-Date möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Console
-            logger.debug(f"Schritt 3: Kein Sich in der CSV-Date möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Log-File
+            print(f"\t\tSchritt 3: Kein Suchen in der Tabelle der bekannten Email-Absender möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Console
+            logger.debug(f"Schritt 3: Kein Suchen in Tabelle der bekannten Email-Absender möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Log-File
 
     else:
-        print(f"\t\tSchritt 3: Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich.")  # Debugging-Ausgabe: Console
-        logger.warning(f"Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich.")
+        print(f"\t\tSchritt 3: Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich bzw. gewünscht.")  # Debugging-Ausgabe: Console
+        logger.warning(f"Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich bzw. gewünscht.")
 
     # 4. Schritt: Versanddatum abrufen und konvertieren
     if MsgAccessStatus.SUCCESS in msg_object["status"] and MsgAccessStatus.DATE_MISSING not in msg_object["status"]:
