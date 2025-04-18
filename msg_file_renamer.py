@@ -94,6 +94,8 @@ import os
 import logging
 import datetime
 import argparse
+import sys
+import io
 
 from modules.msg_generate_new_filename import generate_new_msg_filename
 from utils.file_handling import (rename_file, test_file_access, FileAccessStatus, set_file_creation_date, set_file_modification_date, FileOperationResult)
@@ -101,6 +103,9 @@ from modules.msg_handling import create_log_file, log_entry
 from utils.testset_preparation import prepare_test_directory
 from utils.pdf_generation import generate_pdf_from_msg
 from pathlib import Path
+
+os.system('chcp 65001')  # Setzt Konsole auf UTF-8
+sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
 
 # Verzeichnisse für die Tests definieren
 # SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short-longpath'
@@ -167,12 +172,14 @@ if __name__ == '__main__':
 
     TARGET_DIRECTORY = Path(args.search_directory) # Verzeichnis für die Suche nach MSG-Dateien
 
+    # Excel-Log-Datei
     excel_log_directory = args.excel_log_directory # Verzeichnis für die Excel-Log-Datei
     excel_log_basename = args.excel_log_basename # Basisname für die Excel-Log-Datei
     excel_log_file_path = os.path.join(excel_log_directory, excel_log_basename) # Pfad und Dateiname für die Excel-Log-Datei
 
+    # Debug-Datei (nutzt den gleichen Namen wie die Excel-Log-Datei, aber mit Endung *.txt)
     debug_log_directory = args.debug_log_directory
-    prog_log_file_path = os.path.join(debug_log_directory, excel_log_basename) # Pfad und Dateiname für die Excel-Log-Datei
+    prog_log_file_path = os.path.join(debug_log_directory, "debug_msgfilerenamer" + ".txt") # Pfad und Dateiname für die Debug-Log-Datei
 
     # Logging für Test und Debugging konfigurieren
     setup_logging(prog_log_file_path, DEBUG_MODE)
@@ -248,7 +255,7 @@ if __name__ == '__main__':
             logging.debug(f"\n******************************************************'")  # Debugging-Ausgabe: Log-File
 
             # Initialisierung der Variable
-            #is_msg_file_name_unchanged = False
+            is_msg_file_name_unchanged = False
             is_msg_file_doublette = False
             is_msg_file_doublette_deleted = False
             is_pdf_file_skipped = False
@@ -268,8 +275,8 @@ if __name__ == '__main__':
                 path_and_file_name_length = len(path_and_file_name)
                 logging.debug(f"Pfadlänge aktuelle MSG-Datei: '{path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
 
-                print(f"\tVollständiger Pfad der MSG-Date: '{path_and_file_name}'")  # Debugging-Ausgabe: Console
-                logging.debug(f"\tVollständiger Pfad der MSG-Datei: '{path_and_file_name}'")  # Debugging-Ausgabe: Log-File
+                print(f"\tAktuelles Verzeichnis: '{os.path.dirname(path_and_file_name)}'")  # Debugging-Ausgabe: Console
+                logging.debug(f"\tAktuelles Verzeichnis: '{os.path.dirname(path_and_file_name)}'")  # Debugging-Ausgabe: Log-File
 
                 msg_file_count += 1 # Zähler erhöhen, MSG-Datei gefunden
 
@@ -281,8 +288,8 @@ if __name__ == '__main__':
 
                 # Nur wenn die MSG-Datei schreibend geöffnet werden kann, ist ein Umbenennen möglich
                 if FileAccessStatus.WRITABLE in access_result:
-                    print(f"\tSchreibender Zugriff auf die Datei möglich: {filename}")  # Debugging-Ausgabe: Console
-                    logging.debug(f"\tSchreibender Zugriff auf die Datei möglich: {filename}")  # Debugging-Ausgabe: Log-File
+                    print(f"\tSchreibender Zugriff auf die Datei ist möglich.")  # Debugging-Ausgabe: Console
+                    logging.debug(f"\tSchreibender Zugriff auf die Datei ist möglich: {filename}")  # Debugging-Ausgabe: Log-File
 
                     # Neuen Datenamen erzeugen
                     new_msg_filename_collection = generate_new_msg_filename(path_and_file_name, use_list_of_known_senders=USE_KNOWNSENDER_FILE, file_list_of_known_senders=KNOWNSENDER_FILE)
@@ -317,7 +324,7 @@ if __name__ == '__main__':
 
                         # Prüfen, ob Alter und neuer Name gleich, dann keine Änderung erforderlich
                         if old_path_and_file_name == new_path_and_file_name:
-                            print(f"\tAlter und neuer Dateiname sind gleich: '{filename}'")
+                            print(f"\tAlter und neuer Dateiname sind gleich.")
                             logging.debug(f"Alter und neuer Dateiname sind gleich: '{filename}'")  # Debugging-Ausgabe: Log-File
                             msg_file_same_name_count += 1  # Erfolgszähler erhöhen
                             is_msg_file_name_unchanged = True # Kennzeichnung keine Änderung des Dateinamens erforderlich
@@ -370,6 +377,9 @@ if __name__ == '__main__':
 
                         # Wenn die Datei erfolgreich umbenannt wurde oder die Datei bereits mit korrekten Namen existiert und kein Testlauf durchgeführt wird
                         # dann soll das Erstellungsdatum auf das Versanddatum gesetzt werden
+                        file_has_new_creation_date = False
+                        file_has_new_modification_date = False
+
                         if is_msg_file_for_change_date_available and (not TEST_RUN) and SET_FILEDATE:
                             # Setze das Erstelldatum auf das Versanddatum
                             if new_msg_filename_collection.datetime_stamp != "Unbekannt":
@@ -384,6 +394,7 @@ if __name__ == '__main__':
                                 set_creation_result = set_file_creation_date(new_path_and_file_name, datetime_stamp_str)
                                 if set_creation_result == FileOperationResult.SUCCESS:
                                     msg_file_file_creation_date_count += 1
+                                    file_has_new_creation_date = True
                                     print(f"\tNeues Erstellungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Neues Erstellungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
                                 else:
@@ -397,6 +408,7 @@ if __name__ == '__main__':
                                 set_modification_result = set_file_modification_date(new_path_and_file_name, datetime_stamp_str)
                                 if set_modification_result == FileOperationResult.SUCCESS:
                                     msg_file_modification_date_count += 1
+                                    file_has_new_modification_date = True
                                     print(f"\tNeues Änderungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Neues Änderungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
                                 else:
@@ -444,7 +456,9 @@ if __name__ == '__main__':
                     "Neue nicht gekürzte Pfadlänge": new_path_and_file_name_length,
                     "Neuer gekürzter Dateiname": new_msg_filename_collection.new_truncated_msg_filename,
                     "Kürzung Dateiname erforderlich": new_msg_filename_collection.is_msg_filename_truncated,
-                    #"Alter und neuer Name sind gleich": is_msg_file_name_unchanged,
+                    "Alter und neuer Name sind gleich": is_msg_file_name_unchanged,
+                    "Neues Erstellungsdatum": file_has_new_creation_date,
+                    "Neues Änderungsdatum": file_has_new_modification_date,
                     "Doublette": is_msg_file_doublette,
                     "Doublette gelöscht": is_msg_file_doublette_deleted,
                     "PDF erstellt": is_pdf_file_generated,
@@ -457,12 +471,26 @@ if __name__ == '__main__':
         # Wenn keine rekursive Suche gewünscht ist, wird die Schleife beendet
         if (not RECURSIVE_SEARCH): break
 
+    # Ausgabe der wichtigsten Konfigurationen
+    print(f"\nÜbersicht der Konfigurationen:")
+    print(f"******************************")
+    print(f"Testlauf? {TEST_RUN}")
+    print(f"Testverzeichnis initialisieren? {INIT_TESTDATA}")
+    if INIT_TESTDATA: print(f"Pfad zur Quelle der Testdaten: {SOURCE_DIRECTORY_TEST_DATA}")
+    print(f"Verzeichnis für die Suche nach MSG-Dateien: {TARGET_DIRECTORY}")
+    print(f"Rekursive Suche? {RECURSIVE_SEARCH}")
+    print(f"Bei Bedarf in der Tabelle der bekannten Email-Absender? {USE_KNOWNSENDER_FILE}")
+    if USE_KNOWNSENDER_FILE: print(f"Pfad zur Datei der bekannten Email-Absender: {KNOWNSENDER_FILE}")
+    print(f"Zeitstempel der MSG-Dateien anpassen? {SET_FILEDATE}")
+    print(f"PDF-Dateien erzeugen? {GENERATE_PDF}")
+    if GENERATE_PDF: print("Existierende PDF-Dateien überschreiben? {OVERWRITE_PDF}")
+    print(f"Debug-Mode? {DEBUG_MODE}")
+    print(f"Debug-Datei: {prog_log_file_path}")
+    print(f"Excel-Log-Datei: {excel_log_file_path}")
+
     # Ausgabe der Ergebnisse
-    print(f"\nTestlauf: {TEST_RUN}")
-    print(f"Testverzeichnis initialisieren: {INIT_TESTDATA}")
-    print(f"Zeitstempel der MSG-dateien anpassen: {SET_FILEDATE}")
     print(f"\nErgebnisse (auch bei Testlauf):")
-    print(f"*********************************")
+    print(f"*******************************")
     print(f"Anzahl der gefundenen MSG-Dateien: {msg_file_count}")
     print(f"Anzahl der bereits mit korrekten Namen existierenden MSG-Dateien: {msg_file_same_name_count}")
     print(f"Anzahl der Dateien mit Problemen: {msg_file_problem_count}")
@@ -470,7 +498,7 @@ if __name__ == '__main__':
 
     if not TEST_RUN:
         print(f"\nErgebnisse der Anpassungen:")
-        print(f"*****************************")
+        print(f"***************************")
         print(f"Anzahl der umbenannten Dateien: {msg_file_renamed_count}")
         print(f"Anzahl gefundener Doubletten: {msg_file_doublette_count}")
         print(f"Anzahl gelöschter Doubletten: {msg_file_doublette_deleted_count}")
@@ -478,7 +506,7 @@ if __name__ == '__main__':
 
         if SET_FILEDATE:
             print(f"\nErgebnisse bei Anpassung File-Datum:")
-            print(f"**************************************")
+            print(f"************************************")
             print(f"Anzahl MSG-Dateien mit geändertem Erstellungsdatum: {msg_file_file_creation_date_count}")
             print(f"Anzahl MSG-Dateien mit nicht geändertem Erstellungsdatum: {msg_file_creation_date_problem_count}")
             print(f"Anzahl MSG-Dateien mit geändertem Änderungsdatum: {msg_file_modification_date_count}")
@@ -486,6 +514,6 @@ if __name__ == '__main__':
 
         if GENERATE_PDF:
             print(f"\nErgebniss der PDF-Erzeugung:")
-            print(f"******************************")
+            print(f"****************************")
             print(f"Anzahl der erzeugten PDF-Dateien: {pdf_file_generated}")
             print(f"Anzahl der übersprungenen PDF-Dateien: {pdf_file_skipped}")
