@@ -28,6 +28,48 @@ setlocal enabledelayedexpansion
 :: festgelegt oder der Default-Wert verwendet werden.
 :: ============================================================================
 
+:: ============================================================
+:: Prüfe Python-Installation und installiere falls erforderlich
+:: ============================================================
+echo =====================================================
+echo   *** Prüfe Python-Installation ***
+echo =====================================================
+
+REM === Konfiguration ===
+set PYTHON_VERSION=3.11.8
+set PYTHON_INSTALLER=python-%PYTHON_VERSION%-amd64.exe
+set DOWNLOAD_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/%PYTHON_INSTALLER%
+set INSTALL_DIR=%USERPROFILE%\AppData\Local\Programs\Python\Python%PYTHON_VERSION:~0,1%%PYTHON_VERSION:~2,2%
+
+REM === 1. Prüfen ob Python vorhanden ist ===
+where python >nul 2>nul
+if %errorlevel%==0 (
+    echo Python ist bereits installiert.
+) else (
+    echo Python ist nicht installiert. Starte Installation...
+
+    REM === 2. Installer downloaden ===
+    powershell -Command "Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%PYTHON_INSTALLER%'"
+
+    REM === 3. Installation ohne Adminrechte ===
+    .\%PYTHON_INSTALLER% /quiet InstallAllUsers=0 PrependPath=1 Include_test=0
+
+    REM Kurze Wartezeit, damit Installation abgeschlossen ist
+    timeout /t 10 >nul
+
+    REM === 4. Prüfen ob Installation erfolgreich war ===
+    if exist "%INSTALL_DIR%\python.exe" (
+        echo Python erfolgreich installiert in %INSTALL_DIR%
+        set "PATH=%INSTALL_DIR%;%PATH%"
+    ) else (
+        echo Fehler bei der Installation von Python.
+        pause
+        exit /b 1
+    )
+)
+echo.
+echo.
+
 :: =============================================
 :: Konfiguration ? HIER Defaultpfad festlegen
 :: =============================================
@@ -41,6 +83,7 @@ set "SETFILEDATE="
 set "GENERATEPDF="
 set "OVERWRITEPDF="
 set "NOSHORTENPATHNAME="
+set "RECURSIVESEARCH="
 set "USEKNOWNSENDERFILE=--use_knownsender_file"
 set "KNOWNSENDERFILE=.\config\known_senders_private.csv"
 
@@ -48,8 +91,9 @@ set "KNOWNSENDERFILE=.\config\known_senders_private.csv"
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"  :: letztes Backslash entfernen
 
+:ABFRAGE_DEFAULT_KONFIG_1
 :: =======================================================
-:: 1. Benutzerfrage: Default-Konfiguration verwenden
+::    Benutzerfrage: Default-Konfiguration verwenden
 :: =======================================================
 echo =====================================================
 echo   *** Bitte Konfiguration prüfen ***
@@ -64,9 +108,8 @@ echo       - Zielverzeichnis für MSG-Suche erforderlich
 echo         oder Default-Zielverzeichnis DEFAULT_ZIELPFAD
 echo =====================================================
 echo.
-
-:ABFRAGE1
-set /p ANTWORT="Soll die Default-Konfiguration verwendet oder abgebrochen werden? (J/N/A)":
+:ABFRAGE_DEFAULT_KONFIG_2
+set /p ANTWORT="Soll die Default-Konfiguration verwendet oder abgebrochen werden? (J/N/A)"
 if /i "%ANTWORT%"=="A" (
     echo.
     echo Der Vorgang wird abgebrochen.
@@ -75,43 +118,40 @@ if /i "%ANTWORT%"=="A" (
 ) else if /i "%ANTWORT%"=="J" (
     echo.
     echo Du hast mit JA geantwortet.
-    rem Abfrage der Konfiguration überspringen...
-    goto :ZIELPFADPRE
+    rem Abfrage der Konfiguration teilweise überspringen...
+    goto :ABFRAGE_STANDARDPFAD_1
 ) else if /i "%ANTWORT%"=="N" (
     echo.
     rem Weiter mit dem Skript...
-) else if /i "%ANTWORT%"=="A" (
-    echo.
-    echo Der Vorgang wird abgebrochen.
-    rem Sprung zum Ende des Skripts...
-    goto :ENDE
+    goto :ABFRAGE_DEFAULT_KONFIG_3
 ) else (
     echo.
     echo Ungültige Eingabe. Bitte J, N oder A eingeben.
     echo.
-    goto :ABFRAGE1
+    goto :ABFRAGE_DEFAULT_KONFIG_2
 )
+:ABFRAGE_DEFAULT_KONFIG_3
 
+:ABFRAGE_TESTLAUF_1
 :: =======================================================
-:: 2. Benutzerfrage: Testlauf?
+::    Benutzerfrage: Testlauf?
 :: =======================================================
 echo =====================================================
 echo   *** Testlauf? ***
 echo =====================================================
 echo.
-
-:Abfrage2
+:ABFRAGE_TESTLAUF_2
 set /p ANTWORT="Möchtest du einen Testlauf durchführen? (J/N/A)"
 if /i "%ANTWORT%"=="N" (
     set "NOTESTLAUF=--no_test_run"
-    echo .
+    echo.
     echo Folgendes Argument wird übernommen: !NOTESTLAUF!
     rem Weiter mit dem Skript...
+    goto :ABFRAGE_TESTLAUF_3
 ) else if /i "%ANTWORT%"=="J" (
     echo.
     echo Es wird ein Testlauf ohne Änderungen an Dateien durchgeführt.
-    rem Einige Abfragen können übersprungen werden...
-    goto :Abfrage6pre
+    goto :ABFRAGE_DATEINAMEN_KUERZEN_1
 ) else if /i "%ANTWORT%"=="A" (
     echo.
     echo Der Vorgang wird abgebrochen.
@@ -121,127 +161,31 @@ if /i "%ANTWORT%"=="N" (
     echo.
     echo Ungültige Eingabe. Bitte J, N oder A eingeben.
     echo.
-    goto :ABFRAGE2
+    goto :ABFRAGE_TESTLAUF_2
 )
+:ABFRAGE_TESTLAUF_3
 
+:ABFRAGE_DATEINAMEN_KUERZEN_1
 :: =======================================================
-:: 3. Benutzerfrage: Filedate?
-:: =======================================================
-echo.
-echo =====================================================
-echo   *** Filedate? ***
-echo =====================================================
-echo.
-
-:Abfrage3
-set /p ANTWORT="Möchtest du das Dateidatum anpassen? (J/N/A)"
-if /i "%ANTWORT%"=="J" (
-    set "SETFILEDATE=--set_filedate"
-    echo .
-    echo Folgendes Argument wird übernommen: !SETFILEDATE!
-    rem Weiter mit dem Skript...
-) else if /i "%ANTWORT%"=="N" (
-    echo.
-    echo Das Filedatum der Dateien wird nicht geändert.
-    rem Weiter mit dem Skript...
-) else if /i "%ANTWORT%"=="A" (
-    echo.
-    echo Der Vorgang wird abgebrochen.
-    rem Sprung zum Ende des Skripts...
-    goto :ENDE
-) else (
-    echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
-    echo.
-    goto :ABFRAGE3
-)
-
-:: =======================================================
-:: 4. Benutzerfrage: PDF-Erzeugung?
-:: =======================================================
-echo.
-echo =====================================================
-echo   *** PDF-Erzeugung? ***
-echo =====================================================
-echo.
-
-:Abfrage4
-set /p ANTWORT="Möchtest du zusätzliche PDF-Dateien erzeugen? (J/N/A)"
-if /i "%ANTWORT%"=="J" (
-    set "GENERATEPDF=--generate_pdf"
-    echo .
-    echo Folgendes Argument wird übernommen: !GENERATEPDF!
-    rem Weiter mit dem Skript...
-) else if /i "%ANTWORT%"=="N" (
-    echo.
-    echo Es werden keine zusätzliche PDF-Dateien erzeugt.
-    rem Die nächste Abfrage ist dann überflüssig
-    goto :Abfrage6pre
-) else if /i "%ANTWORT%"=="A" (
-    echo.
-    echo Der Vorgang wird abgebrochen.
-    rem Sprung zum Ende des Skripts...
-    goto :ENDE
-) else (
-    echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
-    echo.
-    goto :ABFRAGE4
-)
-
-:: =======================================================
-:: 5. Benutzerfrage: PDF-Dateien überschreiben?
-:: =======================================================
-echo.
-echo =====================================================
-echo   *** PDF-Dateien überschreiben? ***
-echo =====================================================
-echo.
-
-:Abfrage5
-set /p ANTWORT="Möchtest du bestehende PDF-Dateien überschreien? (J/N/A)"
-if /i "%ANTWORT%"=="J" (
-    set "OVERWRITEPDF=--overwrite_pdf"
-    echo .
-    echo Folgendes Argument wird übernommen: !OVERWRITEPDF!
-    rem Weiter mit dem Skript...
-) else if /i "%ANTWORT%"=="N" (
-    echo.
-    echo Es werden keine zusätzliche PDF-Dateien erzeugt.
-    rem Weiter mit dem Skript...
-) else if /i "%ANTWORT%"=="A" (
-    echo.
-    echo Der Vorgang wird abgebrochen.
-    rem Sprung zum Ende des Skripts...
-    goto :ENDE
-) else (
-    echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
-    echo.
-    goto :ABFRAGE5
-)
-
-:Abfrage6pre
-:: =======================================================
-:: 6. Benutzerfrage: Dateinamen kürzen?
+:: Benutzerfrage: Dateinamen kürzen?
 :: =======================================================
 echo.
 echo =====================================================
 echo   *** Dateinamen kürzen? ***
 echo =====================================================
 echo.
-
-:Abfrage6
+:ABFRAGE_DATEINAMEN_KUERZEN_2
 set /p ANTWORT="Möchtest du die Dateinamen kürzen? (J/N/A)"
 if /i "%ANTWORT%"=="N" (
     set "NOSHORTENPATHNAME=--no_shorten_path_name"
-    echo .
-    echo Folgendes Argument wird übernommen: !NOSHORTENPATHNAME!
+    echo.
     rem Weiter mit dem Skript...
+    goto :ABFRAGE_DATEINAMEN_KUERZEN_3
 ) else if /i "%ANTWORT%"=="J" (
     echo.
     echo Es werden Datenamen gekürzt.
     rem Weiter mit dem Skript...
+    goto :ABFRAGE_DATEINAMEN_KUERZEN_3
 ) else if /i "%ANTWORT%"=="A" (
     echo.
     echo Der Vorgang wird abgebrochen.
@@ -251,29 +195,32 @@ if /i "%ANTWORT%"=="N" (
     echo.
     echo Ungültige Eingabe. Bitte J, N oder A eingeben.
     echo.
-    goto :ABFRAGE6
+    goto :ABFRAGE_DATEINAMEN_KUERZEN_2
 )
+:ABFRAGE_DATEINAMEN_KUERZEN_3
 
+:ABFRAGE_REKURSIVE_SUCHE_1
 :: =======================================================
-:: 7. Benutzerfrage: Rekursive Suche?
+:: Benutzerfrage: Rekursive Suche?
 :: =======================================================
 echo.
 echo =====================================================
 echo   *** Rekursive Suche? ***
 echo =====================================================
 echo.
-
-:Abfrage7
+:ABFRAGE_REKURSIVE_SUCHE_2
 set /p ANTWORT="Möchtest du das Verzeichnis rekursiv durchsuchen? (J/N/A)"
 if /i "%ANTWORT%"=="J" (
     set "RECURSIVESEARCH=--recursive_search"
-    echo .
+    echo.
     echo Folgendes Argument wird übernommen: !RECURSIVESEARCH!
     rem Weiter mit dem Skript...
+    goto :ABFRAGE_REKURSIVE_SUCHE_3
 ) else if /i "%ANTWORT%"=="N" (
     echo.
     echo Es erfolgt keine rekursive Suche.
     rem Weiter mit dem Skript...
+    goto :ABFRAGE_REKURSIVE_SUCHE_3
 ) else if /i "%ANTWORT%"=="A" (
     echo.
     echo Der Vorgang wird abgebrochen.
@@ -283,12 +230,158 @@ if /i "%ANTWORT%"=="J" (
     echo.
     echo Ungültige Eingabe. Bitte J, N oder A eingeben.
     echo.
-    goto :ABFRAGE7
+    goto :ABFRAGE_REKURSIVE_SUCHE_2
+)
+:ABFRAGE_REKURSIVE_SUCHE_3
+
+:: Die folgenden Abfragen nur durchführen, wenn es sich nicht um einen Testlauf handelt
+if /i "%NOTESTLAUF%"=="" (
+    print No Test Run
+    goto :ABFRAGE_STANDARDPFAD_1
 )
 
-:ZIELPFADPRE
+:ABFRAGE_FILEDATE_1
+:: =======================================================
+::   Benutzerfrage: Filedate?
+:: =======================================================
+echo.
+echo =====================================================
+echo   *** Filedate? ***
+echo =====================================================
+echo.
+:ABFRAGE_FILEDATE_2
+set /p ANTWORT="Möchtest du das Dateidatum anpassen? (J/N/A)"
+if /i "%ANTWORT%"=="J" (
+    set "SETFILEDATE=--set_filedate"
+    echo.
+    echo Folgendes Argument wird übernommen: !SETFILEDATE!
+    rem Weiter mit dem Skript...
+    goto :ABFRAGE_FILEDATE_3
+) else if /i "%ANTWORT%"=="N" (
+    echo.
+    echo Das Filedatum der Dateien wird nicht geändert.
+    rem Weiter mit dem Skript...
+    goto :ABFRAGE_FILEDATE_3
+) else if /i "%ANTWORT%"=="A" (
+    echo.
+    echo Der Vorgang wird abgebrochen.
+    rem Sprung zum Ende des Skripts...
+    goto :ENDE
+) else (
+    echo.
+    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo.
+    goto :ABFRAGE_FILEDATE_2
+)
+:ABFRAGE_FILEDATE_3
+
+:ABFRAGE_PDF_ERZEUGUNG_1
+:: =======================================================
+::   Benutzerfrage: PDF-Erzeugung?
+:: =======================================================
+echo.
+echo =====================================================
+echo   *** PDF-Erzeugung? ***
+echo =====================================================
+echo.
+:ABFRAGE_PDF_ERZEUGUNG_2
+set /p ANTWORT="Möchtest du zusätzliche PDF-Dateien erzeugen? (J/N/A)"
+if /i "%ANTWORT%"=="J" (
+    set "GENERATEPDF=--generate_pdf"
+    echo.
+    echo Folgendes Argument wird übernommen: !GENERATEPDF!
+    rem Weiter mit dem Skript...
+    goto :ABFRAGE_PDF_ERZEUGUNG_3
+) else if /i "%ANTWORT%"=="N" (
+    echo.
+    echo Es werden keine zusätzliche PDF-Dateien erzeugt.
+    rem Die nächste Abfrage ist dann überflüssig
+    goto :ABFRAGE_PYTHON_UMGEBUNG_1
+) else if /i "%ANTWORT%"=="A" (
+    echo.
+    echo Der Vorgang wird abgebrochen.
+    rem Sprung zum Ende des Skripts...
+    goto :ENDE
+) else (
+    echo.
+    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo.
+    goto :ABFRAGE_PDF_ERZEUGUNG_2
+)
+:ABFRAGE_PDF_ERZEUGUNG_3
+
+:ABFRAGE_PDF_UEBERSCHREIBEN_1
+:: =======================================================
+:: Benutzerfrage: PDF-Dateien überschreiben?
+:: =======================================================
+echo.
+echo =====================================================
+echo   *** PDF-Dateien überschreiben? ***
+echo =====================================================
+echo.
+:ABFRAGE_PDF_UEBERSCHREIBEN_2
+set /p ANTWORT="Möchtest du bestehende PDF-Dateien überschreiben? (J/N/A)"
+if /i "%ANTWORT%"=="J" (
+    set "OVERWRITEPDF=--overwrite_pdf"
+    echo.
+    echo Folgendes Argument wird übernommen: !OVERWRITEPDF!
+    rem Weiter mit dem Skript...
+    goto :ABFRAGE_PDF_UEBERSCHREIBEN_3
+) else if /i "%ANTWORT%"=="N" (
+    echo.
+    echo Es werden keine zusätzliche PDF-Dateien erzeugt.
+    rem Weiter mit dem Skript...
+    goto :ABFRAGE_PDF_UEBERSCHREIBEN_3
+) else if /i "%ANTWORT%"=="A" (
+    echo.
+    echo Der Vorgang wird abgebrochen.
+    rem Sprung zum Ende des Skripts...
+    goto :ENDE
+) else (
+    echo.
+    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo.
+    goto :ABFRAGE_PDF_UEBERSCHREIBEN_2
+)
+:ABFRAGE_PDF_UEBERSCHREIBEN_3
+
+:ABFRAGE_PYTHON_UMGEBUNG_1
 :: =============================================
-:: 8. Benutzerfrage: Standardpfad verwenden?
+:: Benutzerfrage: Virtuelle Umgebung?
+:: =============================================
+echo.
+echo ===============================================
+echo   *** Abfrage-Virtuelle_Umgebung ***
+echo ===============================================
+echo.
+:ABFRAGE_PYTHON_UMGEBUNG_2
+set /p ANTWORT="Virtuelle Python-Umgebung nutzen? (J/N/A)"
+if /i "%ANTWORT%"=="J" (
+    :: Aktiviert die virtuelle Python-Umgebung
+    call "venv\Scripts\activate"
+    echo.
+    rem Weiter mit dem Skript...
+    goto :ABFRAGE_PYTHON_UMGEBUNG_3
+) else if /i "%ANTWORT%"=="N" (
+    echo.
+    rem Weiter mit dem Skript...
+    goto :ABFRAGE_PYTHON_UMGEBUNG_3
+) else if /i "%ANTWORT%"=="A" (
+    echo.
+    echo Der Vorgang wird abgebrochen.
+    rem Sprung zum Ende des Skripts...
+    goto :ENDE
+) else (
+    echo.
+    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
+    echo.
+    goto :ABFRAGE_PYTHON_UMGEBUNG_2
+)
+:ABFRAGE_PYTHON_UMGEBUNG_3
+
+:ABFRAGE_STANDARDPFAD_1
+:: =============================================
+:: Benutzerfrage: Standardpfad verwenden?
 :: =============================================
 echo.
 echo ===============================================
@@ -298,14 +391,15 @@ echo.
 echo Standard-Zielverzeichnis:
 echo   %DEFAULT_ZIELPFAD%
 echo.
-
-:ZIELPFAD
+:ABFRAGE_STANDARDPFAD_2
 set /p ANTWORT="Möchtest du diesen Pfad verwenden? (J/N/A)"
-
 if /i "%ANTWORT%"=="J" (
     set "ZIELPFAD=%DEFAULT_ZIELPFAD%"
     echo.
+    :: Aktiviert die virtuelle Python-Umgebung
+    call "venv\Scripts\activate"
     rem Weiter mit dem Skript...
+    goto :START
 ) else if /i "%ANTWORT%"=="A" (
     echo.
     echo Der Vorgang wird abgebrochen.
@@ -313,49 +407,54 @@ if /i "%ANTWORT%"=="J" (
     goto :ENDE
 ) else if /i "%ANTWORT%"=="N" (
     echo.
-    set /p ZIELPFAD="Bitte gib den gewünschten Zielpfad ein:"
-    rem Weiter mit dem Skript...
+    rem Weiter mit Zielpfadeingabe...
+    goto :ABFRAGE_ZIELPFAD_1
 ) else (
     echo.
     echo Ungültige Eingabe. Bitte J, N oder A eingeben.
     echo.
-    goto :ZIELPFAD
+    goto :ABFRAGE_STANDARDPFAD_2
 )
+:ABFRAGE_STANDARDPFAD_3
 
+:ABFRAGE_ZIELPFAD_1
 :: =============================================
-:: 9. Zielpfad prüfen
+:: Zielpfad prüfen
 :: =============================================
+echo.
+echo ===============================================
+echo   *** Zielverzeichnis-Validierung ***
+echo ===============================================
+echo.
+:ABFRAGE_ZIELPFAD_2
+set /p ZIELPFAD="Bitte gib den gewünschten Zielpfad ein: (Windows-konforme Pfadangabe)"
 if not exist "%ZIELPFAD%\" (
     echo.
     echo ? Fehler: Das Verzeichnis "%ZIELPFAD%" existiert NICHT.
     echo Der Vorgang wird abgebrochen.
     goto :ENDE
+) else (
+    echo.
+    echo ? Das Zielverzeichnis existiert.
+    echo.
+    echo Zielverzeichnis für Suche nach MSG-Dateien:
+    echo   "%ZIELPFAD%"
+    echo.
 )
+:ABFRAGE_ZIELPFAD_3
 
+:START
 :: =============================================
-:: 10. Verarbeitung starten
+:: Verarbeitung starten
 :: =============================================
 echo.
-echo ? Das Zielverzeichnis existiert.
+echo ===============================================
+echo   *** Verarbeitung Starten ***
+echo ===============================================
 echo.
-echo Starte Verarbeitung im Verzeichnis:
-echo   "%ZIELPFAD%"
-echo.
-
-:: Aktiviert die virtuelle Python-Umgebung
-call "venv\Scripts\activate"
-
 echo python msg_file_renamer.py %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
 python "msg_file_renamer.py" %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
-:: =============================================
-:: 11. Hinweis auf Logdatei im Batch-Verzeichnis
-:: =============================================
-echo -----------------------------------------------
-echo Die Verarbeitung wurde abgeschlossen.
-echo Die Excel-Logdatei wurde im Verzeichnis der Batch-Datei abgelegt:
-echo   "%SCRIPT_DIR%"
-echo -----------------------------------------------
+echo.
 
 :ENDE
-echo.
 pause

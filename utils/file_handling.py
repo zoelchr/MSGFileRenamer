@@ -49,6 +49,7 @@ class FileOperationResult(Enum):
     SUCCESS = "Success"
     FILE_NOT_FOUND = "File not found"
     DESTINATION_EXISTS = "Destination file already exists"
+    TIMESTAMP_MATCH = "Timestamp match"
     PERMISSION_DENIED = "Permission denied"
     INVALID_FILENAME = "Invalid filename"
     INVALID_FILENAME1 = "Source is a file and destination is a directory"
@@ -325,6 +326,21 @@ def set_file_modification_date(file_path: str, new_date: str) -> FileOperationRe
     try:
         # Konvertiere das Datum in einen Zeitstempel
         timestamp = time.mktime(datetime.datetime.strptime(new_date, '%Y-%m-%d %H:%M:%S').timetuple())
+
+        # Überprüfe, ob die Datei existiert
+        if not os.path.exists(file_path):
+            return FileOperationResult.FILE_NOT_FOUND
+
+        # Hole den aktuellen Änderungszeitstempel
+        current_timestamp = os.path.getmtime(file_path)
+        #print(f"Aktueller Änderungszeitstempel: {current_timestamp}")
+
+        # Überprüfe, ob das Datum bereits übereinstimmt
+        if current_timestamp == timestamp:
+            #print("Der Änderungszeitstempel der Datei ist bereits korrekt.")
+            return FileOperationResult.TIMESTAMP_MATCH
+
+        # Setze das Änderungsdatum der Datei
         os.utime(file_path, (timestamp, timestamp))  # Setze das Änderungsdatum der Datei
         return FileOperationResult.SUCCESS  # Erfolgreich gesetzt
 
@@ -366,6 +382,19 @@ def set_file_creation_date(file_path: str, new_creation_date: str) -> FileOperat
         # Konvertiere das Datum in einen Zeitstempel
         timestamp = time.mktime(time.strptime(new_creation_date, '%Y-%m-%d %H:%M:%S'))
         creation_time = pywintypes.Time(timestamp)  # Erstelle ein Zeitobjekt für die Windows-API
+
+        # Überprüfe, ob die Datei existiert
+        if not os.path.exists(file_path):
+            return FileOperationResult.FILE_NOT_FOUND
+
+        # Hole den aktuellen Erstellungszeitstempel
+        current_timestamp = os.path.getctime(file_path)
+        #print(f"Aktueller Erstellungszeitstempel: {current_timestamp}")
+
+        # Überprüfe, ob das Datum bereits übereinstimmt
+        if current_timestamp == timestamp:
+            #print("Der Erstellungszeitstempel der Datei ist bereits korrekt.")
+            return FileOperationResult.TIMESTAMP_MATCH
 
         # Verwende den Kontextmanager, um die Datei sicher zu öffnen
         with FileHandle(file_path) as handle:

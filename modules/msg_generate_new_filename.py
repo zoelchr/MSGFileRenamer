@@ -74,9 +74,9 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
     Verwendung:
     Importieren Sie diese Funktion in Ihr Skript, um neue Dateinamen für MSG-Dateien zu generieren, die auf den Metadaten der Dateien basieren.
     """
-    print(f"\t***********************************************************")
-    print(f"\tVersuche einen neuen Namen für die MSG-Datei zu generieren.")
-    print(f"\t***********************************************************")
+    print(f"\t*************************************************************")
+    print(f"\t* Versuche einen neuen Namen für die MSG-Datei zu generieren.")
+    print(f"\t*************************************************************")
 
     format_string = "%Y%m%d-%Huhr%M"  # Beispiel für das gewünschte Format für Zeitstempel
 
@@ -200,8 +200,6 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
         is_msg_filename_truncated = False
         print(f"\tSchritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Log-File
-
-    print(f"\t***********************************************************")
 
     # Ausgabe aller Informationen
     if PRINT_RESULT:
