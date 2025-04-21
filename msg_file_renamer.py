@@ -116,6 +116,7 @@ import logging
 import datetime
 import argparse
 import sys
+import importlib
 import io
 
 from modules.msg_generate_new_filename import generate_new_msg_filename
@@ -150,7 +151,35 @@ def setup_logging(file, debug=False):
         filename=file
     )
 
+def check_module_installed(module_name):
+    """
+    Überprüft, ob ein bestimmtes Python-Modul installiert ist.
+
+    Diese Funktion versucht, das angegebene Modul zu importieren.
+    Wenn der Import fehlschlägt, wird eine Fehlermeldung ausgegeben und das Programm beendet.
+
+    Parameter:
+    - module_name (str): Der Name des zu überprüfenden Moduls.
+
+    Verwendung:
+    Diese Funktion sollte zu Beginn eines Programms aufgerufen werden, um sicherzustellen,
+    dass alle erforderlichen Abhängigkeiten vorhanden sind, bevor der Hauptteil des Programms ausgeführt wird.
+    """
+    try:
+        importlib.import_module(module_name)
+    except ImportError:
+        print(f"Fehler: Das Modul '{module_name}' ist nicht installiert.")
+        print("Bitte installieren Sie das fehlende Modul und starten Sie das Programm erneut.")
+        sys.exit(1)
+
 if __name__ == '__main__':
+
+    # Überprüfen, ob die erforderlichen Module installiert sind
+    check_module_installed('extract_msg')
+    check_module_installed('pandas')
+    check_module_installed('fpdf') # Dient zur Überprüfung, ob fpdf oder fpdf2 installiert ist
+    check_module_installed('openpyxl')
+    check_module_installed('win32file') # Dient der Überprüfung, ob pywin32 installiert ist
 
     # Argumente des Programmaufrufs über die Kommandozeile auswerten
     parser = argparse.ArgumentParser()
