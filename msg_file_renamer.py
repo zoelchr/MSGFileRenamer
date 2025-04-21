@@ -88,6 +88,27 @@ Der Testmodus ist ideal, um den Prozess vor der endgültigen Ausführung zu vali
 Hinweise:
 - Stellen Sie sicher, dass alle Abhängigkeiten (zum Beispiel für das Lesen von MSG-Dateien und die PDF-Erzeugung) installiert sind.
 - Passen Sie das Namensschema, die optionalen Attribute und die Konfiguration an Ihre Anforderungen an, bevor Sie das Modul produktiv einsetzen.
+
+Dieses Modul benötigt einige zusätzliche Python-Pakete, die für bestimmte Funktionen essenziell sind:
+
+- extract_msg:
+    Zum Auslesen von Outlook-.msg-Dateien, inkl. Betreff, Body, Anhängen und Metadaten.
+
+- pandas:
+    Für die Verarbeitung strukturierter Daten, insbesondere zum Einlesen und Pflegen
+    von CSV-Dateien wie Log-Dateien oder Listen bekannter Absender.
+
+- pywin32:
+    Ermöglicht Zugriff auf Windows-spezifische Systemfunktionen:
+    - pywintypes: Umwandlung und Verarbeitung von Datei-Zeitstempeln
+    - win32file: Zugriff auf FileHandles sowie Lesen/Setzen von Datei-Zeitstempeln
+    - win32con: Auslesen von Datei-Attributen (z.B. versteckt, schreibgeschützt)
+
+- fpdf2:
+    Zur Erstellung von PDF-Dokumenten für strukturierte Ausgaben oder Berichte.
+
+- openpyxl:
+    Für das Lesen und Schreiben von Excel-Dateien im .xlsx-Format (ab Excel 2007).
 """
 
 import os

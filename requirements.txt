@@ -1,5 +1,19 @@
-pandas>=1.0.0
+# ============================================
+# Python-Abhängigkeiten für das Projekt
+# inkl. Kommentaren zur jeweiligen Verwendung
+# ============================================
+
+# Für das Auslesen von Outlook-.msg-Dateien
 extract-msg>=0.53.1
+
+# Für die Verarbeitung von CSV-Dateien (z.B. Log-Dateien, Absenderlisten)
+pandas>=1.0.0
+
+# Für den Zugriff auf Windows-spezifische Dateioperationen
+pywin32>=308  # win32file, pywintypes, win32con
+
+# Für das Lesen/Schreiben von Excel-Dateien im .xlsx-Format
 openpyxl>=3.1.5
-pywin32>=308
+
+# Für die Erstellung von PDF-Dateien mit Unicode-Unterstützung
 fpdf2>=2.3.3
