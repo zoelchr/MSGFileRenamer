@@ -116,7 +116,7 @@ import logging
 import datetime
 import argparse
 import sys
-import importlib
+import importlib.util
 import io
 
 from modules.msg_generate_new_filename import generate_new_msg_filename
@@ -151,7 +151,7 @@ def setup_logging(file, debug=False):
         filename=file
     )
 
-def check_module_installed(module_name):
+def check_module_installed(module_name: str, install_text: str):
     """
     Überprüft, ob ein bestimmtes Python-Modul installiert ist.
 
@@ -165,21 +165,23 @@ def check_module_installed(module_name):
     Diese Funktion sollte zu Beginn eines Programms aufgerufen werden, um sicherzustellen,
     dass alle erforderlichen Abhängigkeiten vorhanden sind, bevor der Hauptteil des Programms ausgeführt wird.
     """
-    try:
-        importlib.import_module(module_name)
-    except ImportError:
+    if importlib.util.find_spec(module_name) is None:
         print(f"Fehler: Das Modul '{module_name}' ist nicht installiert.")
-        print("Bitte installieren Sie das fehlende Modul und starten Sie das Programm erneut.")
+        print("Bitte installieren Sie das fehlende Modul und starten Sie das Programm erneut.\n")
+        print("Dazu zuerst in das Verzeichnis mit der Datei 'msg_file_renamer.bat' wechseln und dort ein Windows Terminal öffnen.")
+        print(r"Dann die zugehörige virtuelle Python-Umgebung durch '.\venv\Scripts\activate.bat' aktivieren.")
+        print("Eventuell hat das Verzeichnis für die virtuelle Python-Umgebung statt 'venv' auch einen anderen Namen.")
+        print(f"Anschließend kann das fehlende Modul über die folgende Eingabe installiert werden:\n '{install_text}'")
         sys.exit(1)
 
 if __name__ == '__main__':
 
     # Überprüfen, ob die erforderlichen Module installiert sind
-    check_module_installed('extract_msg')
-    check_module_installed('pandas')
-    check_module_installed('fpdf') # Dient zur Überprüfung, ob fpdf oder fpdf2 installiert ist
-    check_module_installed('openpyxl')
-    check_module_installed('win32file') # Dient der Überprüfung, ob pywin32 installiert ist
+    check_module_installed('extract_msg', "pip install extract_msg --trusted-host pypi.org --trusted-host files.pythonhosted.org")
+    check_module_installed('pandas', "pip install pandas --trusted-host pypi.org --trusted-host files.pythonhosted.org")
+    check_module_installed('fpdf', "pip install fpdf2 --trusted-host pypi.org --trusted-host files.pythonhosted.org") # Dient zur Überprüfung, ob fpdf oder fpdf2 installiert ist
+    check_module_installed('openpyxl', "pip install openpyxl --trusted-host pypi.org --trusted-host files.pythonhosted.org")
+    check_module_installed('win32file', "pip install pywin32 --trusted-host pypi.org --trusted-host files.pythonhosted.org") # Dient der Überprüfung, ob pywin32 installiert ist
 
     # Argumente des Programmaufrufs über die Kommandozeile auswerten
     parser = argparse.ArgumentParser()

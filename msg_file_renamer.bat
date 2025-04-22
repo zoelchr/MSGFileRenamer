@@ -296,7 +296,7 @@ if /i "%ANTWORT%"=="J" (
     echo.
     echo Es werden keine zusätzliche PDF-Dateien erzeugt.
     rem Die nächste Abfrage ist dann überflüssig
-    goto :ABFRAGE_PYTHON_UMGEBUNG_1
+    goto :ABFRAGE_PDF_UEBERSCHREIBEN_3
 ) else if /i "%ANTWORT%"=="A" (
     echo.
     echo Der Vorgang wird abgebrochen.
@@ -345,40 +345,6 @@ if /i "%ANTWORT%"=="J" (
 )
 :ABFRAGE_PDF_UEBERSCHREIBEN_3
 
-:ABFRAGE_PYTHON_UMGEBUNG_1
-:: =============================================
-:: Benutzerfrage: Virtuelle Umgebung?
-:: =============================================
-echo.
-echo ===============================================
-echo   *** Abfrage-Virtuelle_Umgebung ***
-echo ===============================================
-echo.
-:ABFRAGE_PYTHON_UMGEBUNG_2
-set /p ANTWORT="Virtuelle Python-Umgebung nutzen? (J/N/A)"
-if /i "%ANTWORT%"=="J" (
-    :: Aktiviert die virtuelle Python-Umgebung
-    call "venv\Scripts\activate"
-    echo.
-    rem Weiter mit dem Skript...
-    goto :ABFRAGE_PYTHON_UMGEBUNG_3
-) else if /i "%ANTWORT%"=="N" (
-    echo.
-    rem Weiter mit dem Skript...
-    goto :ABFRAGE_PYTHON_UMGEBUNG_3
-) else if /i "%ANTWORT%"=="A" (
-    echo.
-    echo Der Vorgang wird abgebrochen.
-    rem Sprung zum Ende des Skripts...
-    goto :ENDE
-) else (
-    echo.
-    echo Ungültige Eingabe. Bitte J, N oder A eingeben.
-    echo.
-    goto :ABFRAGE_PYTHON_UMGEBUNG_2
-)
-:ABFRAGE_PYTHON_UMGEBUNG_3
-
 :ABFRAGE_STANDARDPFAD_1
 :: =============================================
 :: Benutzerfrage: Standardpfad verwenden?
@@ -396,8 +362,6 @@ set /p ANTWORT="Möchtest du diesen Pfad verwenden? (J/N/A)"
 if /i "%ANTWORT%"=="J" (
     set "ZIELPFAD=%DEFAULT_ZIELPFAD%"
     echo.
-    :: Aktiviert die virtuelle Python-Umgebung
-    call "venv\Scripts\activate"
     rem Weiter mit dem Skript...
     goto :START
 ) else if /i "%ANTWORT%"=="A" (
@@ -435,9 +399,7 @@ if not exist "%ZIELPFAD%\" (
     goto :ENDE
 ) else (
     echo.
-    echo ? Das Zielverzeichnis existiert.
-    echo.
-    echo Zielverzeichnis für Suche nach MSG-Dateien:
+    echo Das Zielverzeichnis für Suche nach MSG-Dateien existiert:
     echo   "%ZIELPFAD%"
     echo.
 )
@@ -452,6 +414,36 @@ echo ===============================================
 echo   *** Verarbeitung Starten ***
 echo ===============================================
 echo.
+:: Pfad zur Aktivierungsdatei der virtuellen Umgebung
+set VENV_PATH=venv\Scripts\activate
+:: Existenz prüfen
+if not exist "%VENV_PATH%" (
+    echo.
+    echo ❌ Keine virtuelle Umgebung gefunden!
+    echo Gesucht wurde: "%VENV_PATH%"
+    echo.
+    echo In diesem Verzeichnis wird eine Python-Virtual-Environment erwartet.
+    echo Bitte lege eine virtuelle Umgebung mit folgendem Befehl an:
+    echo.
+    echo     python -m venv venv
+    echo.
+    echo Danach kannst du das Skript erneut starten.
+    echo.
+    pause
+    exit /b 1
+)
+REM Falls die Datei existiert: aktivieren und weitermachen
+echo ✅ Virtuelle Umgebung gefunden.
+
+:: Aktiviert die virtuelle Python-Umgebung
+call "venv\Scripts\activate"
+:: Prüfe Python
+echo Aktuelle Python-Version:
+python --version
+echo Aktuelle Python-Umgebung:
+for /f "delims=" %%i in ('where python') do @echo Aktive Python-Variante: %%i & goto done
+:done
+:: Und Action
 echo python msg_file_renamer.py %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
 python "msg_file_renamer.py" %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
 echo.
