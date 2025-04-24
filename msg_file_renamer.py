@@ -128,16 +128,17 @@ from pathlib import Path
 
 print("")
 os.system('chcp 65001')  # Setzt Konsole auf UTF-8
-sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
+#original_stdout = sys.stdout
+#sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
 print("")
 
 # Verzeichnisse für die Tests definieren
 # SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short-longpath'
-SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-long'
+SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-public'
 # SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short'
 TARGET_DIRECTORY_TEST_DATA = r'.\tests\functional\testdir'
 TARGET_DIRECTORY = ""
-LIST_OF_KNOWN_SENDERS = r'.\config\known_senders_private.csv' # Liste der bekannten Email-Absender aus einer CSV-Datei
+LIST_OF_KNOWN_SENDERS = r'.\config\known_senders.csv' # Liste der bekannten Email-Absender aus einer CSV-Datei
 
 # Maximal zulässige Pfadlänge für Windows 11
 MAX_PATH_LENGTH = 260
@@ -617,3 +618,9 @@ if __name__ == '__main__':
             print(f"****************************")
             print(f"Anzahl der erzeugten PDF-Dateien: {pdf_file_generated}")
             print(f"Anzahl der übersprungenen PDF-Dateien: {pdf_file_skipped}")
+
+    # Aufräumen
+    #sys.stdout.close()
+    #sys.stdout = original_stdout  # Optional: Wiederherstellen für spätere Nutzung
+
+    logging.shutdown()

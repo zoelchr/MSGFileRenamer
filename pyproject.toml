@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "msg-file-renamer"
+version = "1.0"
+description = "A utility for renaming MSG files efficiently based on their metadata."
+authors = [
+  { name = "Rüdiger Zölch", email = "ruediger@zoelch.me" }
+]
+license = "MIT"
+readme = "readme.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pandas",
+    "openpyxl",
+    "pillow"
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["known_senders.csv", "msg_file_renamer.bat", "readme.md", "testing.md", "Das ist eine Test-Email.msg"]

@@ -8,6 +8,47 @@ Die Datei ist ein Python-Skript, das für die Verarbeitung und Verwaltung von MS
 - Generierung von Excel- und Debug-Logs
 - Möglichkeit, PDFs aus MSG-Dateien zu generieren
 
+## Kurzanleitung für MSGFileRenamer
+
+Diese Anleitung richtet sich an alle, die das Programm einfach ausprobieren möchten – ganz ohne Python-Kenntnisse oder zusätzliche Installationen.
+
+### Schritt-für-Schritt-Anleitung
+
+#### 1. Programmverzeichnis kopieren
+- Navigiere in das Unterverzeichnis `.\dist`
+- Wähle das gewünschte Release aus, z.B.:
+  ```
+  .\dist\MSGFileRenamer 1.0
+  ```
+- Kopiere dieses Verzeichnis auf deinen Rechner
+
+#### 2. Programm starten
+- Das Programm wird über die Batch-Datei gestartet:
+  ```
+  .\MSGFileRenamer 1.0\msg_file_renamer.bat
+  ```
+- Einfach Doppelklick – fertig!
+
+#### 3. Optionale Anpassung: bekannte Absender
+- Bei Bedarf kannst du die Datei anpassen:
+  ```
+  .\MSGFileRenamer 1.0\config\known_senders.csv
+  ```
+- Das ist nicht zwingend erforderlich für die Funktion des Programms
+
+#### 4. (Optional) Testdaten nutzen
+- Du kannst eigene MSG-Dateien in folgenden Ordner kopieren:
+  ```
+  .\MSGFileRenamer 1.0\tests\functional\testdir
+  ```
+- Auch dieser Schritt ist nicht notwendig, kann aber beim Testen helfen
+
+#### 5. Ergebnisse nach dem Programmlauf
+Nach dem Ausführen des Programms findest du:
+
+- Eine Excel-Datei, die die durchgeführten Umbenennungen dokumentiert
+- Eine Debug-Logdatei, die für die Fehlersuche verwendet werden kann (für den normalen Gebrauch nicht relevant)
+
 ## Importierte Module
 Das Skript verwendet sowohl interne als auch benutzerdefinierte Module. Hier sind die wichtigsten Importe:
 - **Standardmodule:**

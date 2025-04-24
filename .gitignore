@@ -1,3 +1,4 @@
 /logs/
 /data/
 known_senders_private.csv
+/msg_file_renamer.egg-info/
