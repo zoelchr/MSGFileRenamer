@@ -1,107 +1,87 @@
-# 📁 MSG File Renamer
+# MSGFileRenamer
 
-Ein vielseitiges Python-Skript zur automatisierten Verarbeitung von Outlook-`.msg`-Dateien mit Fokus auf **Standardisierung**, **Archivierung** und **Dublettenkontrolle**.
+Ein Python-Tool zur automatisierten Verarbeitung und Verwaltung von MSG-Dateien (Microsoft Outlook E-Mails).
 
----
+## Features
 
-## 🚀 Funktionen
+- Automatische Umbenennung von MSG-Dateien basierend auf Metadaten
+- Anpassung der Zeitstempel auf das E-Mail-Versanddatum
+- PDF-Generierung aus MSG-Dateien (optional)
+- Detaillierte Excel-Protokollierung aller Operationen
+- Unterstützung für bekannte Absender via CSV-Datei
+- Umfangreiche Konfigurationsmöglichkeiten über Kommandozeile
 
-- 🏷️ **Einheitliche Dateibenennung**  
-  Erzeugt normierte Dateinamen auf Basis von Absender, Versanddatum, Betreff etc.
+## Kurzanleitung
 
-- ♻️ **Doubletten-Erkennung & -Löschung**  
-  Erkennt Duplikate anhand von Hashwerten und entfernt sie automatisch.
+Diese Anleitung richtet sich an alle, die das Programm einfach ausprobieren möchten – ganz ohne Python-Kenntnisse oder zusätzliche Installationen.
 
-- 🔍 **Rekursive Dateisuche**  
-  Durchsucht auf Wunsch auch alle Unterverzeichnisse.
+### 1. Programmverzeichnis kopieren
+- Navigiere in das Unterverzeichnis `.\dist`
+- Wähle das gewünschte Release aus, z.B.:
+  ```
+  .\dist\MSGFileRenamer 1.0
+  ```
+- Kopiere dieses Verzeichnis auf deinen Rechner
 
-- 📊 **Excel-Export**  
-  Protokolliert alle Ergebnisse übersichtlich in einer `.xlsx`-Datei.
+### 2. Programm starten
+- Das Programm wird über die Batch-Datei gestartet:
+  ```
+  .\MSGFileRenamer 1.0\msg_file_renamer.bat
+  ```
+- Einfach Doppelklick – fertig!
 
-- 🕒 **Dateizeitstempel anpassen (optional)**  
-  Setzt Erstellungs-/Änderungsdatum auf den Versandzeitpunkt der E-Mail.
+### 3. Optionale Anpassung: bekannte Absender
+- Bei Bedarf kannst du die Datei anpassen:
+  ```
+  .\MSGFileRenamer 1.0\config\known_senders.csv
+  ```
+- Das ist nicht zwingend erforderlich für die Funktion des Programms
 
-- 🧾 **PDF-Zusammenfassung (optional)**  
-  Erzeugt für jede E-Mail eine kompakte PDF mit allen Kerndaten.
+### 4. (Optional) Testdaten nutzen
+- Du kannst eigene MSG-Dateien in folgenden Ordner kopieren:
+  ```
+  .\MSGFileRenamer 1.0\tests\functional\testdir
+  ```
+- Auch dieser Schritt ist nicht notwendig, kann aber beim Testen helfen
 
-- 🧪 **Simulationsmodus**  
-  Führt Testlauf ohne Dateiveränderungen durch – ideal zur Überprüfung.
+### 5. Ergebnisse nach dem Programmlauf
+Nach dem Ausführen des Programms findest du:
+- Eine Excel-Datei mit den durchgeführten Umbenennungen
+- Eine Debug-Logdatei (für normalen Gebrauch nicht relevant)
 
----
+## Entwickler-Dokumentation
 
-## ⚙️ Konfiguration & CLI-Optionen
+### Technische Voraussetzungen
+- Python 3.10.6
+- Virtualenv als Package Manager
+- Installierte Pakete:
+  - numpy
+  - openpyxl
+  - pandas
+  - pillow
+  - pyparsing
+  - pytz
+  - six
+  - wheel
 
-Das Skript kann direkt über die Kommandozeile mit Argumenten oder komfortabel über die Batch-Datei `msg_file_renamer.bat` gestartet werden.
+### Kommandozeilenparameter
 
-### 🧾 Häufig verwendete CLI-Argumente
+| Parameter | Beschreibung | Standard |
+|-----------|--------------|----------|
+| `-ntr`, `--no_test_run` | Testmodus (keine Dateioperationen) | `False` |
+| `-fd`, `--set_filedate` | Zeitstempel anpassen | `False` |
+| `-pdf`, `--generate_pdf` | PDFs generieren | `False` |
+| `-rs`, `--recursive_search` | Rekursive Verzeichnissuche | `False` |
+| `-sd`, `--search_directory` | Suchverzeichnis | `./tests/functional/testdir` |
 
-| Argument                      | Beschreibung                                                                |
-|-------------------------------|-----------------------------------------------------------------------------|
-| `--no_test_run` (`-ntr`)      | Führt **echte Änderungen** durch (standardmäßig ist Testlauf aktiv).        |
-| `--set_filedate` (`-fd`)      | Aktiviert die Anpassung des Dateidatums auf das Versanddatum.              |
-| `--search_directory` (`-sd`)  | Pfad zum Eingangsverzeichnis.                                              |
-| `--recursive_search` (`-rs`)  | Rekursive Suche in Unterverzeichnissen aktivieren.                         |
-| `--generate_pdf` (`-pdf`)     | Erstellt PDFs aus den `.msg`-Dateien.                                      |
-| `--overwrite_pdf` (`-opdf`)   | Überschreibt bereits vorhandene PDFs.                                      |
-| `--use_knownsender_file` (`-ucf`) | Aktiviert Filterung anhand bekannter Absender.                         |
-| `--knownsender_file` (`-cf`)  | Pfad zur CSV-Datei mit bekannten Absendern.                                |
-| `--no_shorten_path_name` (`-spn`) | Verhindert Kürzung langer Pfadnamen.                                 |
-
----
-
-## 📦 Installation
-
-### 🔧 Voraussetzungen
-
-- **Python** ≥ 3.7
-
-### 📥 Schritte
-
-1. **Repository klonen**  
-   ```bash
-   git clone https://github.com/zoelchr/MSGFileRenamer.git
-   cd MSGFileRenamer
-   ```
-
-2. **(Optional) Virtuelle Umgebung erstellen**  
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate       # Windows
-   ```
-
-3. **Abhängigkeiten installieren**  
-   ```bash
-   pip install -r requirements.txt
-   ```
-
----
-
-## 🛠 Verwendung
-
-### 📁 Start per Batch-Datei
+### Build-Prozess
+Release-Build mit PyInstaller erstellen:
 ```bash
-msg_file_renamer.bat
+pyinstaller --onefile --console msg_file_renamer.py
 ```
-
-### 🔄 Direkter Aufruf mit Argumenten
-```bash
-python msg_file_renamer.py --search_directory "D:/Mails" --recursive_search --generate_pdf --no_test_run
-```
-
----
-
-## 📤 Ausgabe
-
-Die Ergebnisse werden in einer Excel-Datei gespeichert mit u. a. folgenden Spalten:
-
-- **Dateiname**
-- **Pfad**
-- **Pfadlänge**
-- **Versanddatum**
-- **Betreff**
-- **Absender**
-- **PDF erstellt (Ja/Nein)**
-- ...
+Optionen:
+- `--onefile`: Erstellt eine einzelne EXE-Datei
+- `--console`: Aktiviert Konsolenausgabe
 
 ---
 
@@ -119,6 +99,11 @@ MSGFileRenamer/
 │   ├── excel_handling.py            # Excel-Export
 │   ├── file_handling.py             # Umbenennen, löschen, Zeit setzen
 │   └── pdf_generation.py            # PDF-Erstellung
+├── dist/
+│   └── MSGFielRenamer 1.0/          # Distributable
+├── tests/
+│   └── functional/                  
+│       └── testdir/                 # Testdaten
 └── config/
     └── known_senders_private.csv   # Liste mit bekannten Absendern
 ```
