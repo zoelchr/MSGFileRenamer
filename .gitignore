@@ -2,3 +2,9 @@
 /data/
 known_senders_private.csv
 /msg_file_renamer.egg-info/
+config/known_senders.csv
+config/known_senders.csv
+*.xlsx
+*.pyc
+config/known_senders.csv
+debug_msgfilerenamer.txt

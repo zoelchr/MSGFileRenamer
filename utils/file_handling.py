@@ -23,6 +23,7 @@ Importieren Sie dieses Modul in Ihr Skript, um die oben genannten Funktionen zur
 """
 
 import os
+import shutil
 import time
 import pywintypes
 import win32file
@@ -161,7 +162,7 @@ def test_file_access(file_path: str) -> list[FileAccessStatus]:
         return [FileAccessStatus.UNKNOWN_ERROR]
 
 
-def rename_file(current_name: str, new_name: str, retries=1, delay_ms=200) -> FileOperationResult:
+def rename_file(current_name: str, new_name: str, retries=3, delay_ms=200) -> FileOperationResult:
     """
     Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
     Neue verbesserte Version
@@ -169,7 +170,7 @@ def rename_file(current_name: str, new_name: str, retries=1, delay_ms=200) -> Fi
     Parameter:
     current_name (str): Der aktuelle Dateiname.
     new_name (str): Der neue Dateiname.
-    retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 1).
+    retries (int): Anzahl der Wiederholungen bei Misserfolg (Standard: 3).
     delay_ms (int): Millisekunden zwischen den Wiederholungen (Standard: 200).
 
     Rückgabewert:
@@ -178,11 +179,20 @@ def rename_file(current_name: str, new_name: str, retries=1, delay_ms=200) -> Fi
     attempt = 0
     rename_file_result = None  # Variable für den Rückgabewert
 
+    try:
+        print(f"Prüfe: {os.path.exists(current_name)}")
+    except FileNotFoundError as e:
+        print("Datei nicht gefunden:", current_name)
+        print(e)
+    except Exception as e:
+        print("Allgemeiner Fehler:", e)
+
     while attempt < retries:
         try:
             logging.debug(f"Aktueller Dateiname: {current_name}")  # Debugging-Ausgabe: Log-File
             logging.debug(f"Neuer Dateiname: {new_name}")  # Debugging-Ausgabe: Log-File
-            os.rename(current_name, new_name)
+            #os.rename(current_name, new_name)
+            shutil.move(current_name, new_name)
             rename_file_result = FileOperationResult.SUCCESS  # Erfolgreiche Umbenennung
         except FileNotFoundError:
             print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
