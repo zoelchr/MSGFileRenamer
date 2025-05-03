@@ -162,7 +162,7 @@ def test_file_access(file_path: str) -> list[FileAccessStatus]:
         return [FileAccessStatus.UNKNOWN_ERROR]
 
 
-def rename_file(current_name: str, new_name: str, retries=3, delay_ms=200) -> FileOperationResult:
+def rename_file(current_name: str, new_name: str, retries=3, delay_ms=200, max_console_output=False) -> FileOperationResult:
     """
     Benennt eine Datei um und prüft die erfolgreiche Umbenennung.
     Neue verbesserte Version
@@ -180,12 +180,12 @@ def rename_file(current_name: str, new_name: str, retries=3, delay_ms=200) -> Fi
     rename_file_result = None  # Variable für den Rückgabewert
 
     try:
-        print(f"Prüfe: {os.path.exists(current_name)}")
+        if max_console_output: print(f"Prüfe: {os.path.exists(current_name)}")
     except FileNotFoundError as e:
-        print("Datei nicht gefunden:", current_name)
-        print(e)
+        if max_console_output: print("Datei nicht gefunden:", current_name)
+        if max_console_output: print(e)
     except Exception as e:
-        print("Allgemeiner Fehler:", e)
+        if max_console_output: print("Allgemeiner Fehler:", e)
 
     while attempt < retries:
         try:
@@ -195,23 +195,23 @@ def rename_file(current_name: str, new_name: str, retries=3, delay_ms=200) -> Fi
             shutil.move(current_name, new_name)
             rename_file_result = FileOperationResult.SUCCESS  # Erfolgreiche Umbenennung
         except FileNotFoundError:
-            print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
+            if max_console_output: print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Log-File
             rename_file_result = FileOperationResult.FILE_NOT_FOUND  # Datei nicht gefunden
         except PermissionError:
-            print(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Console
+            if max_console_output: print(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Log-File
             rename_file_result = FileOperationResult.PERMISSION_DENIED  # Berechtigungsfehler
         except FileExistsError:
-            print(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Console
+            if max_console_output: print(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Log-File
             return FileOperationResult.DESTINATION_EXISTS
         except IsADirectoryError:
-            print(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Console
+            if max_console_output: print(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Console
             logging.error(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Log-File
             return FileOperationResult.INVALID_FILENAME1
         except NotADirectoryError:
-            print(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Console
+            if max_console_output: print(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Log-File
             return FileOperationResult.INVALID_FILENAME2
         except Exception as e:

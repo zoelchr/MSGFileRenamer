@@ -66,6 +66,8 @@ Kommandozeilenargumente:
     Gibt an, ob vorhandene PDF-Dateien überschrieben werden sollen.
     Bei True wird eine ggf. schon vorhandene, gleichnamige PDF-Datei überschrieben,
     bei False bleibt die bestehende PDF-Datei erhalten.
+--min_console_output
+    Reduzierte Ausgabe des Vorgangs auf der Console
 
 Kommandozeilenargumente speziell zu Testzwecken
 --debug_mode
@@ -118,10 +120,11 @@ import argparse
 import sys
 import importlib.util
 import io
+import pandas as pd
 
 from modules.msg_generate_new_filename import generate_new_msg_filename
 from utils.file_handling import (rename_file, test_file_access, FileAccessStatus, set_file_creation_date, set_file_modification_date, FileOperationResult)
-from modules.msg_handling import create_log_file, log_entry
+from modules.msg_handling import create_log_file, log_entry, log_entry_neu, create_log_file_neu
 from utils.testset_preparation import prepare_test_directory
 from utils.pdf_generation import generate_pdf_from_msg
 from pathlib import Path
@@ -200,6 +203,7 @@ if __name__ == '__main__':
     parser.add_argument("-rs", "--recursive_search", default=False, action="store_true", help="True/False für die rekursive Suche nach MSG-Dateien (Default=False)"),
     parser.add_argument("-ucf", "--use_knownsender_file", default=False, action="store_true", help="True/False für die Nutzung des Config-Files (Default=False)"),
     parser.add_argument("-cf", "--knownsender_file", type=str, default="LIST_OF_KNOWN_SENDERS", help="CSV-Datei mit Liste der bekannten Absender")
+    parser.add_argument("-mco", "--max_console_output", default=False, action="store_true", help="Maximale Consolen-Ausgabe aktivieren (Default=False)")
     args, unknown = parser.parse_known_args()
 
     # Unbekannte Parameter ausgeben und Programm beenden
@@ -208,12 +212,7 @@ if __name__ == '__main__':
         print("Bitte überprüfen Sie die übergebenen Parameter.")
         exit()
 
-    print(f"****************************************************")
-    print(f"* Informationen zum Programmstart.")
-    print(f"****************************************************")
-
     args_formatted = str(args).replace(",", "\n\t\t").replace("Namespace", "").strip("()")
-    print(f"\nÜbergebene Argumente:\n\t\t {args_formatted}") # Debugging-Ausgabe: Console
 
     # Argumente des Programmaufrufs an die Variablen übergeben
     INIT_TESTDATA = args.init_testdata
@@ -226,9 +225,15 @@ if __name__ == '__main__':
     RECURSIVE_SEARCH = args.recursive_search
     USE_KNOWNSENDER_FILE = args.use_knownsender_file
     KNOWNSENDER_FILE = args.knownsender_file
+    MAX_CONSOLE_OUTPUT = args.max_console_output
+
+    if MAX_CONSOLE_OUTPUT: print(f"\n****************************************************")
+    if MAX_CONSOLE_OUTPUT: print(f"* Informationen zum Programmstart.")
+    if MAX_CONSOLE_OUTPUT: print(f"****************************************************")
+    if MAX_CONSOLE_OUTPUT: print(f"\nÜbergebene Argumente:\n\t\t {args_formatted}") # Debugging-Ausgabe: Console
 
     # Start Ausgabe auf Console
-    print(f"\nTestlauf: {TEST_RUN}\nTestverzeichnis initialisieren: {INIT_TESTDATA}\nZeitstempel der MSG-dateien anpassen: {SET_FILEDATE}\nDebug-Modus: {DEBUG_MODE}")
+    if MAX_CONSOLE_OUTPUT: print(f"\nTestlauf: {TEST_RUN}\nTestverzeichnis initialisieren: {INIT_TESTDATA}\nZeitstempel der MSG-dateien anpassen: {SET_FILEDATE}\nDebug-Modus: {DEBUG_MODE}")
 
     TARGET_DIRECTORY = Path(args.search_directory) # Verzeichnis für die Suche nach MSG-Dateien
 
@@ -237,6 +242,9 @@ if __name__ == '__main__':
     excel_log_basename = args.excel_log_basename # Basisname für die Excel-Log-Datei
     excel_log_file_path = os.path.join(excel_log_directory, excel_log_basename) # Pfad und Dateiname für die Excel-Log-Datei
 
+    # Zusätzlicher Sheetname
+    excel_log_sheet_name = "Ergebnis"
+    
     # Debug-Datei (nutzt den gleichen Namen wie die Excel-Log-Datei, aber mit Endung *.txt)
     debug_log_directory = args.debug_log_directory
     prog_log_file_path = os.path.join(debug_log_directory, "debug_msgfilerenamer" + ".txt") # Pfad und Dateiname für die Debug-Log-Datei
@@ -253,42 +261,44 @@ if __name__ == '__main__':
     if not TARGET_DIRECTORY:
         TARGET_DIRECTORY = TARGET_DIRECTORY_TEST_DATA
 
+    print(f"\n************************************************************************")
     print(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}") # Debugging-Ausgabe: Console
+    print(f"************************************************************************")
     logging.debug(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}")  # Debugging-Ausgabe: Log-File
 
     # Log-Verzeichnis und Basisname für Excel-Logdateien festlegen
     LOG_TABLE_HEADER = ["Fortlaufende Nummer", "Verzeichnisname", "Original-Filename"]
 
     # Excel-Logdatei erstellen und den Pfad ausgeben
-    excel_log_file_path = create_log_file(excel_log_basename, excel_log_directory, LOG_TABLE_HEADER)
-    print(f"Excel-Logdatei erstellt: {excel_log_file_path}")
+    excel_log_file_path = create_log_file_neu(excel_log_basename, excel_log_directory, LOG_TABLE_HEADER, sheet_name="Log")
+    if MAX_CONSOLE_OUTPUT: print(f"Excel-Logdatei erstellt: {excel_log_file_path}")
 
     # Abhängig von INIT_TESTDATA wird das Testverzeichnis vorbereitet oder nicht
-    print(f"Soll das Testverzeichnis vorbereitet werden? {INIT_TESTDATA}") # Debugging-Ausgabe: Console
+    if MAX_CONSOLE_OUTPUT: print(f"Soll das Testverzeichnis vorbereitet werden? {INIT_TESTDATA}") # Debugging-Ausgabe: Console
     logging.debug(f"Soll das Testverzeichnis vorbereitet werden? {INIT_TESTDATA}")  # Debugging-Ausgabe: Log-File
 
     if INIT_TESTDATA:
-        print(f"Prüfung ob Zielverzeichnis für Testdaten bereits existiert: {TARGET_DIRECTORY_TEST_DATA}") # Debugging-Ausgabe: Console
+        if MAX_CONSOLE_OUTPUT: print(f"Prüfung ob Zielverzeichnis für Testdaten bereits existiert: {TARGET_DIRECTORY_TEST_DATA}") # Debugging-Ausgabe: Console
         logging.debug(f"Prüfung ob Zielverzeichnis für Testdaten bereits existiert: {TARGET_DIRECTORY_TEST_DATA}")  # Debugging-Ausgabe: Log-File
 
         # Wenn TARGET_DIRECTORY_TEST_DATA noch nicht existiert, dann erstellen
         if not os.path.isdir(TARGET_DIRECTORY_TEST_DATA):
             os.makedirs(TARGET_DIRECTORY_TEST_DATA, exist_ok=True)
-            print(f"Zielverzeichnis neu erstellt: {TARGET_DIRECTORY_TEST_DATA}")
+            if MAX_CONSOLE_OUTPUT: print(f"Zielverzeichnis neu erstellt: {TARGET_DIRECTORY_TEST_DATA}")
         else:
-            print(f"Zielverzeichnis existiert bereits: {TARGET_DIRECTORY_TEST_DATA}")
+            if MAX_CONSOLE_OUTPUT: print(f"Zielverzeichnis existiert bereits: {TARGET_DIRECTORY_TEST_DATA}")
 
         # Bereite das Zielverzeichnis vor und überprüfe den Erfolg
         success = prepare_test_directory(SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA)
         if success:
-            print("Vorbereitung des Testverzeichnisses erfolgreich abgeschlossen.") # Debugging-Ausgabe: Console
+            if MAX_CONSOLE_OUTPUT: print("Vorbereitung des Testverzeichnisses erfolgreich abgeschlossen.") # Debugging-Ausgabe: Console
             logging.error("\tVorbereitung des Testverzeichnisses erfolgreich abgeschlossen.")  # Debugging-Ausgabe: Log-File
         else:
-            print("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.") # Debugging-Ausgabe: Console
+            if MAX_CONSOLE_OUTPUT: print("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.") # Debugging-Ausgabe: Console
             logging.error("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.")  # Debugging-Ausgabe: Log-File
             exit(1)  # Programm abbrechen
     else:
-        print(f"Kein Testverzeichnis vorbereitet.") # Debugging-Ausgabe: Console
+        if MAX_CONSOLE_OUTPUT: print(f"Kein Testverzeichnis vorbereitet.") # Debugging-Ausgabe: Console
         logging.debug(f"Kein Testverzeichnis vorbereitet.")  # Debugging-Ausgabe: Log-File
 
     # Zähler für gefundene sowie umbenannte Dateien und Probleme initialisieren
@@ -314,7 +324,7 @@ if __name__ == '__main__':
     for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
         # filename = Dateiname
         for filename in files:
-            logging.debug(f"\n******************************************************'")  # Debugging-Ausgabe: Log-File
+            logging.debug(f"\n******************************************************************************************************")  # Debugging-Ausgabe: Log-File
 
             # Initialisierung der Variable
             is_msg_file_name_unchanged = False
@@ -322,11 +332,12 @@ if __name__ == '__main__':
             is_msg_file_doublette_deleted = False
             is_pdf_file_skipped = False
             is_pdf_file_generated = False
+            rename_msg_file_result = None
 
             # Überprüfen, ob die Datei die Endung .msg hat
             if filename.lower().endswith('.msg'):
-                print(f"\nAktuelle MSG-Datei: '{filename}'")  # Debugging-Ausgabe: Console
-                logging.debug(f"\nAktuelle MSG-Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
+                print(f"MSG-Datei: '{filename}'")  # Debugging-Ausgabe: Console
+                logging.debug(f"\nMSG-Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
 
                 # Absoluter Pfadname der MSG-Datei
                 path_and_file_name = os.path.join(pathname, filename)
@@ -337,7 +348,7 @@ if __name__ == '__main__':
                 path_and_file_name_length = len(path_and_file_name)
                 logging.debug(f"Pfadlänge aktuelle MSG-Datei: '{path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
 
-                print(f"\tAktuelles Verzeichnis: '{os.path.dirname(path_and_file_name)}'")  # Debugging-Ausgabe: Console
+                if MAX_CONSOLE_OUTPUT: print(f"\tAktuelles Verzeichnis: '{os.path.dirname(path_and_file_name)}'")  # Debugging-Ausgabe: Console
                 logging.debug(f"\tAktuelles Verzeichnis: '{os.path.dirname(path_and_file_name)}'")  # Debugging-Ausgabe: Log-File
 
                 msg_file_count += 1 # Zähler erhöhen, MSG-Datei gefunden
@@ -345,16 +356,16 @@ if __name__ == '__main__':
                 # Überprüfen den Schreib- und Lesezugriff auf die MSG-Datei
                 access_result = test_file_access(path_and_file_name)
 
-                print(f"\tÜberprüfung Zugriff auf aktuelle MSG-Date: {[s.value for s in access_result]}'")  # Debugging-Ausgabe: Console
+                if MAX_CONSOLE_OUTPUT: print(f"\tÜberprüfung Zugriff auf aktuelle MSG-Date: {[s.value for s in access_result]}'")  # Debugging-Ausgabe: Console
                 logging.debug(f"\tÜberprüfung Zugriff auf aktuelle MSG-Date: {[s.value for s in access_result]}'")  # Debugging-Ausgabe: Log-File
 
                 # Nur wenn die MSG-Datei schreibend geöffnet werden kann, ist ein Umbenennen möglich
                 if FileAccessStatus.WRITABLE in access_result:
-                    print(f"\tSchreibender Zugriff auf die Datei ist möglich.")  # Debugging-Ausgabe: Console
+                    if MAX_CONSOLE_OUTPUT: print(f"\tSchreibender Zugriff auf die Datei ist möglich.")  # Debugging-Ausgabe: Console
                     logging.debug(f"\tSchreibender Zugriff auf die Datei ist möglich: {filename}")  # Debugging-Ausgabe: Log-File
 
                     # Neuen Datenamen erzeugen
-                    new_msg_filename_collection = generate_new_msg_filename(path_and_file_name, use_list_of_known_senders=USE_KNOWNSENDER_FILE, file_list_of_known_senders=KNOWNSENDER_FILE)
+                    new_msg_filename_collection = generate_new_msg_filename(path_and_file_name, use_list_of_known_senders=USE_KNOWNSENDER_FILE, file_list_of_known_senders=KNOWNSENDER_FILE, max_console_output=MAX_CONSOLE_OUTPUT)
 
                     # Wenn Dateiname gekürzt wurde, dann Zähler erhöhen
                     # if new_msg_filename_collection.is_msg_filename_truncated: msg_file_shorted_name_count += 1
@@ -375,7 +386,7 @@ if __name__ == '__main__':
                             new_file_name = new_msg_filename_collection.new_truncated_msg_filename
                             if new_msg_filename_collection.is_msg_filename_truncated:
                                 msg_file_shorted_name_count += 1
-                                print(f"\tNeuer gekürzter Dateiname: '{new_file_name}'")
+                                if MAX_CONSOLE_OUTPUT: print(f"\tNeuer gekürzter Dateiname: '{new_file_name}'")
                                 logging.debug(f"Neuer gekürzter Dateiname: '{new_file_name}'")  # Debugging-Ausgabe: Log-File
 
                         # Neuen absoluten Pfad erzeugen
@@ -384,12 +395,12 @@ if __name__ == '__main__':
                         if os.name == 'nt':  # Check if the OS is Windows
                             new_path_and_file_name = f"\\\\?\\{os.path.abspath(new_path_and_file_name)}"
 
-                        print(f"\tNeuer absoluter Pfad: '{new_path_and_file_name}'")
+                        if MAX_CONSOLE_OUTPUT: print(f"\tNeuer absoluter Pfad: '{new_path_and_file_name}'")
                         logging.debug(f"Neuer absoluter Pfad: '{new_path_and_file_name}'")  # Debugging-Ausgabe: Log-File
 
                         # Pfadlänge ermitteln
                         new_path_and_file_name_length = len(new_path_and_file_name)
-                        print(f"\tPfadlänge neue MSG-Datei: '{new_path_and_file_name_length}'")
+                        if MAX_CONSOLE_OUTPUT: print(f"\tPfadlänge neue MSG-Datei: '{new_path_and_file_name_length}'")
                         logging.debug(f"Pfadlänge neue MSG-Datei: '{new_path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
 
                         # Prüfen, ob Alter und neuer Name gleich, dann keine Änderung erforderlich
@@ -425,16 +436,16 @@ if __name__ == '__main__':
                                 # Wenn kein Testlauf
                                 if (not TEST_RUN) and (not is_msg_file_doublette):
 
-                                    print(f"\t****************************************************")
-                                    print(f"\t* Wenn erforderlich, dann Umbenennung der MSG-Datei.")
-                                    print(f"\t****************************************************")
+                                    if MAX_CONSOLE_OUTPUT: print(f"\t****************************************************")
+                                    if MAX_CONSOLE_OUTPUT: print(f"\t* Wenn erforderlich, dann Umbenennung der MSG-Datei.")
+                                    if MAX_CONSOLE_OUTPUT: print(f"\t****************************************************")
 
                                     # Umbenennen der MSG-Datei
-                                    rename_msg_file_result = rename_file(old_path_and_file_name, new_path_and_file_name)
+                                    rename_msg_file_result = rename_file(old_path_and_file_name, new_path_and_file_name, max_console_output=MAX_CONSOLE_OUTPUT)
 
-                                    # rename_msg_file_result gleich "Datei erfolgreich umbenannt"
+                                    # Zähler und Parameter abhängig von erfolgreicher Umbenennung setzen 
                                     if rename_msg_file_result.SUCCESS:
-                                        print(f"\tErfolgreiche Umbenennung der Datei '{filename}' in '{new_file_name}'")
+                                        print(f"\tErfolgreiche Umbenennung der Datei in '{new_file_name}'")
                                         logging.debug(f"Erfolgreiche Umbenennung der Datei '{filename}' in '{new_file_name}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_renamed_count += 1  # Erfolgszähler erhöhen
                                         is_msg_file_for_change_date_available = True  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
@@ -444,7 +455,7 @@ if __name__ == '__main__':
                                         msg_file_doublette_count += 1  # Erfolgszähler erhöhen
                                         is_msg_file_for_change_date_available = False  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
                                     else:
-                                        print(f"\tUmbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")
+                                        print(f"\tUmbenennen der Datei fehlgeschlagen: '{rename_msg_file_result}'")
                                         logging.debug(f"Umbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_problem_count += 1  # Problemzähler erhöhen
                                         is_msg_file_for_change_date_available = False
@@ -456,9 +467,9 @@ if __name__ == '__main__':
 
                         if is_msg_file_for_change_date_available and (not TEST_RUN) and SET_FILEDATE and (not is_msg_file_doublette):
 
-                            print(f"\t*************************************************************")
-                            print(f"\t* Wenn erforderlich, dann Zeitstempel der MSG-Datei anpassen.")
-                            print(f"\t*************************************************************")
+                            if MAX_CONSOLE_OUTPUT: print(f"\t*************************************************************")
+                            if MAX_CONSOLE_OUTPUT: print(f"\t* Wenn erforderlich, dann Zeitstempel der MSG-Datei anpassen.")
+                            if MAX_CONSOLE_OUTPUT: print(f"\t*************************************************************")
 
                             # Setze das Erstelldatum auf das Versanddatum
                             if new_msg_filename_collection.datetime_stamp != "Unbekannt":
@@ -475,15 +486,15 @@ if __name__ == '__main__':
                                 if set_creation_result == FileOperationResult.SUCCESS:
                                     msg_file_file_creation_date_count += 1
                                     file_has_new_creation_date = True
-                                    print(f"\tNeues Erstellungsdatum erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
+                                    if MAX_CONSOLE_OUTPUT: print(f"\tNeues Erstellungsdatum erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Neues Erstellungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
                                 elif set_creation_result == FileOperationResult.TIMESTAMP_MATCH :
                                     msg_file_creation_date_unchanged_count += 1
-                                    print(f"\tSetzen des Erstellungsdatum nicht erforderlich.")  # Ausgabe des Ergebnisses
+                                    if MAX_CONSOLE_OUTPUT: print(f"\tSetzen des Erstellungsdatum nicht erforderlich.")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Setzen des Erstellungsdatum für '{new_file_name}' nicht erforderlich.")  # Debugging-Ausgabe: Log-File
                                 else:
                                     msg_file_creation_date_problem_count += 1
-                                    print(f"\tFehler beim Setzen des Erstellungsdatum: '{set_creation_result}'")  # Ausgabe des Ergebnisses
+                                    if MAX_CONSOLE_OUTPUT: print(f"\tFehler beim Setzen des Erstellungsdatum: '{set_creation_result}'")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Fehler beim Setzen des Erstellungsdatum für '{new_file_name}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
 
                                 # Setze das Änderungsdatum auf das Versanddatum
@@ -491,50 +502,50 @@ if __name__ == '__main__':
                                 if set_modification_result == FileOperationResult.SUCCESS:
                                     msg_file_modification_date_count += 1
                                     file_has_new_modification_date = True
-                                    print(f"\tNeues Änderungsdatum erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
+                                    if MAX_CONSOLE_OUTPUT: print(f"\tNeues Änderungsdatum erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Neues Änderungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
                                 elif set_creation_result == FileOperationResult.TIMESTAMP_MATCH :
                                     msg_file_modification_date_unchanged_count += 1
-                                    print(f"\tSetzen des Änderungsdatum nicht erforderlich.")  # Ausgabe des Ergebnisses
+                                    if MAX_CONSOLE_OUTPUT: print(f"\tSetzen des Änderungsdatum nicht erforderlich.")  # Ausgabe des Ergebnisses
                                     logging.debug(f"Setzen des Änderungsdatum für '{new_file_name}' nicht erforderlich.")  # Debugging-Ausgabe: Log-File
                                 else:
                                     msg_file_modification_date_problem_count += 1
-                                    print(
+                                    if MAX_CONSOLE_OUTPUT: print(
                                         f"\tFehler beim Setzen des Änderungsdatum: '{set_creation_result}'")  # Ausgabe des Ergebnisses
                                     logging.debug(
                                         f"Fehler beim Setzen des Änderungsdatum für '{new_file_name}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
                             else:
                                 msg_file_creation_date_problem_count += 1
                                 msg_file_modification_date_count += 1
-                                print(f"\tKein Versanddatum der MSG-Datei verfügbar.")  # Ausgabe des Ergebnisses
+                                if MAX_CONSOLE_OUTPUT: print(f"\tKein Versanddatum der MSG-Datei verfügbar.")  # Ausgabe des Ergebnisses
                                 logging.debug(f"Kein Versanddatum der MSG-Datei verfügbar.")  # Debugging-Ausgabe: Log-File
 
                         # Wenn GENERATE_PDF True ist, wird eine PDF-Datei aus der MSG-Datei erstellt
                         if GENERATE_PDF and (not is_msg_file_doublette):
-                            print(f"\t***********************************************************")
-                            print(f"\t* Wenn erforderlich, PDF-Datei erzeugen.")
-                            print(f"\t***********************************************************")
+                            if MAX_CONSOLE_OUTPUT: print(f"\t***********************************************************")
+                            if MAX_CONSOLE_OUTPUT: print(f"\t* Wenn erforderlich, PDF-Datei erzeugen.")
+                            if MAX_CONSOLE_OUTPUT: print(f"\t***********************************************************")
 
                             pdf_path = os.path.splitext(new_path_and_file_name)[0] + ".pdf"
 
                             # Wenn der -opdf Flag False ist und die PDF-Datei bereits existiert, wird sie nicht überschrieben
                             if not OVERWRITE_PDF and os.path.exists(pdf_path):
-                                print(f"\tPDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
+                                if MAX_CONSOLE_OUTPUT: print(f"\tPDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
                                 logging.info(f"PDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
                                 pdf_file_skipped += 1
                             else:
                                 generate_pdf_from_msg(new_path_and_file_name, 800)
-                                print(f"\tPDF-Datei '{pdf_path}' erzeugt.")
+                                if MAX_CONSOLE_OUTPUT: print(f"\tPDF-Datei '{pdf_path}' erzeugt.")
                                 logging.info(f"PDF-Datei '{pdf_path}' erzeugt.")
                                 pdf_file_generated += 1
 
                 elif FileAccessStatus.READABLE in access_result:
-                    print(f"\tNur lesender Zugriff auf die Datei möglich.")
+                    if MAX_CONSOLE_OUTPUT: print(f"\tNur lesender Zugriff auf die Datei möglich.")
                     logging.info(f"Nur lesender Zugriff auf die Datei möglich.")
                     msg_file_problem_count += 1  # Problemzähler erhöhen
 
                 else:
-                    print(f"\tWeder lesender noch schreibender Zugriff auf die Datei möglich: '{[s.value for s in access_result]}'")
+                    if MAX_CONSOLE_OUTPUT: print(f"\tWeder lesender noch schreibender Zugriff auf die Datei möglich: '{[s.value for s in access_result]}'")
                     logging.info(f"eder lesender noch schreibender Zugriff auf die Datei möglich: '{[s.value for s in access_result]}'")
                     msg_file_problem_count += 1  # Problemzähler erhöhen
 
@@ -565,7 +576,7 @@ if __name__ == '__main__':
                 }
 
                 # Eintrag ins Logfile hinzufügen
-                log_entry(excel_log_file_path, entry)
+                log_entry_neu(excel_log_file_path, entry, sheet_name="Log")
 
         # Wenn keine rekursive Suche gewünscht ist, wird die Schleife beendet
         if (not RECURSIVE_SEARCH): break
@@ -586,6 +597,17 @@ if __name__ == '__main__':
     print(f"Debug-Mode? {DEBUG_MODE}")
     print(f"Debug-Datei: {prog_log_file_path}")
     print(f"Excel-Log-Datei: {excel_log_file_path}")
+
+    # Schreibe Ergebnis Sheet
+    entry = [
+        { "Konfiguration": "Testlauf?", "Wert": TEST_RUN },
+        { "Konfiguration": "Testverzeichnis initialisieren?", "Wert": INIT_TESTDATA },
+        { "Konfiguration": "Verzeichnis für die Suche nach MSG-Dateien", "Wert": TARGET_DIRECTORY },
+        { "Konfiguration": "Bei Bedarf in der Tabelle der bekannten Email-Absender?", "Wert": RECURSIVE_SEARCH },
+        { "Konfiguration": "Rekursive Suche?", "Wert": USE_KNOWNSENDER_FILE },
+        { "Konfiguration": "Pfad zur Datei der bekannten Email-Absender", "Wert": KNOWNSENDER_FILE }
+    ]
+    log_entry_neu(excel_log_file_path, entry, sheet_name="Konfiguration")
 
     # Ausgabe der Ergebnisse
     print(f"\nErgebnisse (auch bei Testlauf):")

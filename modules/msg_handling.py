@@ -225,6 +225,34 @@ def create_log_file(base_name, directory, table_header):
         logger.error(f"Fehler beim Erstellen der Logdatei: {e}")  # Debugging-Ausgabe: Log-File
         raise OSError(f"Fehler beim Erstellen der Logdatei: {e}")
 
+def create_log_file_neu(base_name, directory, table_header, sheet_name="Log"):
+    """
+    Erstellt ein Logfile im Excel-Format mit Zeitstempel und optionalem Sheetnamen.
+
+    Parameter:
+    base_name (str): Der Basisname der Logdatei.
+    directory (str): Das Zielverzeichnis für die Datei.
+    table_header (list): Die Spaltenüberschriften für die leere Tabelle.
+    sheet_name (str): Der Name des Sheets (Standard: "Log").
+
+    Rückgabewert:
+    str: Der Pfad zur erstellten Logdatei.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file_name = f"{base_name}_{timestamp}.xlsx"
+    log_file_path = os.path.join(directory, log_file_name)
+
+    # Leeres DataFrame mit Header erstellen
+    df = pd.DataFrame(columns=table_header)
+
+    try:
+        with pd.ExcelWriter(log_file_path, engine="openpyxl", mode="w") as writer:
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+        logger.debug(f"Logging Excel-Datei erfolgreich erstellt: {log_file_path}")
+        return log_file_path
+    except Exception as e:
+        logger.error(f"Fehler beim Erstellen der Logdatei: {e}")
+        raise OSError(f"Fehler beim Erstellen der Logdatei: {e}")
 
 def log_entry(log_file_path, entry):
     """
@@ -249,16 +277,69 @@ def log_entry(log_file_path, entry):
             with pd.ExcelFile(log_file_path) as xls:  # Verwende einen with-Block
                 df = pd.read_excel(xls)
                 # Nur nicht-leere DataFrames zusammenführen
-                if not df.empty:
-                    df = pd.concat([df, new_entry_df], ignore_index=True)  # Eintrag hinzufügen
+                if not df.empty and not df.isna().all(axis=None):
+                     if not new_entry_df.empty and not new_entry_df.isna().all(axis=None):
+                        df = pd.concat([df, new_entry_df], ignore_index=True)
                 else:
-                    df = new_entry_df  # Neue Logdatei erstellen, wenn df leer ist
-        else:
-            df = new_entry_df  # Neue Logdatei erstellen
+                    df = new_entry_df  # Neue Logdatei erstellen
 
         # Speichern des aktualisierten DataFrames in die Logdatei
         df.to_excel(log_file_path, index=False)
 
+def log_entry_neu(log_file_path, entry, sheet_name="Log"):
+    """
+    Fügt einen oder mehrere Einträge in das Logfile (Excel) hinzu.
+
+    Parameter:
+    - log_file_path (str): Der Pfad zur Excel-Logdatei.
+    - entry (dict | list[dict]): Ein einzelner oder mehrere Logeinträge.
+    - sheet_name (str): Der Name des Sheets (Standard: "Log").
+
+    Rückgabewert:
+    - None
+    """
+
+    # entry in DataFrame umwandeln (egal ob dict oder Liste)
+    if isinstance(entry, dict):
+        new_entry_df = pd.DataFrame([entry])
+    elif isinstance(entry, list) and all(isinstance(e, dict) for e in entry):
+        new_entry_df = pd.DataFrame(entry)
+    else:
+        print("Ungültiger Eintragstyp – erwartet dict oder Liste von dicts.")
+        return
+
+    # Leere oder nutzlose Einträge überspringen
+    if new_entry_df.empty or new_entry_df.isnull().all(axis=1).all():
+        print("Die übergebenen Daten sind leer oder vollständig ungültig – nichts gespeichert.")
+        return
+
+    # Versuche bestehende Datei und Sheet zu lesen
+    if os.path.exists(log_file_path):
+        try:
+            with pd.ExcelFile(log_file_path) as xls:
+                if sheet_name in xls.sheet_names:
+                    df_alt = pd.read_excel(xls, sheet_name=sheet_name)
+                else:
+                    df_alt = pd.DataFrame()
+        except Exception as e:
+            print(f"Fehler beim Lesen der Excel-Datei: {e}")
+            df_alt = pd.DataFrame()
+    else:
+        df_alt = pd.DataFrame()
+
+    # Neue Daten anhängen oder neu starten
+    if not df_alt.empty and not df_alt.isna().all(axis=None):
+        df_neu = pd.concat([df_alt, new_entry_df], ignore_index=True)
+    else:
+        df_neu = new_entry_df
+
+    # Schreiben (bestehendes Sheet ersetzen)
+    try:
+        with pd.ExcelWriter(log_file_path, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            df_neu.to_excel(writer, sheet_name=sheet_name, index=False)
+    except FileNotFoundError:
+        with pd.ExcelWriter(log_file_path, engine="openpyxl", mode="w") as writer:
+            df_neu.to_excel(writer, sheet_name=sheet_name, index=False)
 
 def convert_to_utc_naive(datetime_stamp):
     """

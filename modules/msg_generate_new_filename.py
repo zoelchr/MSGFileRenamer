@@ -58,7 +58,7 @@ LIST_OF_KNOWN_SENDERS = r'.\config\known_senders_private.csv'
 
 PRINT_RESULT = False
 
-def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=False, file_list_of_known_senders=LIST_OF_KNOWN_SENDERS, max_path_length=260):
+def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=False, file_list_of_known_senders=LIST_OF_KNOWN_SENDERS, max_console_output=False, max_path_length=260):
     """
     generate_new_msg_filename(msg_path_and_filename, max_path_length=260)
 
@@ -74,9 +74,9 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
     Verwendung:
     Importieren Sie diese Funktion in Ihr Skript, um neue Dateinamen für MSG-Dateien zu generieren, die auf den Metadaten der Dateien basieren.
     """
-    print(f"\t*************************************************************")
-    print(f"\t* Versuche einen neuen Namen für die MSG-Datei zu generieren.")
-    print(f"\t*************************************************************")
+    if max_console_output: print(f"\t*************************************************************")
+    if max_console_output: print(f"\t* Versuche einen neuen Namen für die MSG-Datei zu generieren.")
+    if max_console_output: print(f"\t*************************************************************")
 
     format_string = "%Y%m%d-%Huhr%M"  # Beispiel für das gewünschte Format für Zeitstempel
 
@@ -85,17 +85,17 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
         logger.debug(f"\tSchritt 0: Versuche Einlesen Liste bekannter Email-Absender aus CSV-Datei: {file_list_of_known_senders}'")  # Debugging-Ausgabe: Log-File
         # Prüfen, ob die Datei existiert und lesbar ist
         if os.path.exists(file_list_of_known_senders) and os.access(file_list_of_known_senders, os.R_OK):
-            print(f"\tSchritt 0: Die Tabelle der bekannten Email-Absender '{file_list_of_known_senders}' ist zugänglich und lesbar.")
+            if max_console_output: print(f"\tSchritt 0: Die Tabelle der bekannten Email-Absender '{file_list_of_known_senders}' ist zugänglich und lesbar.")
             logger.debug(f"Schritt 0: Die Tabelle der bekannten Email-Absender '{file_list_of_known_senders}' ist zugänglich und lesbar.")  # Debugging-Ausgabe: Log-File
 
             known_senders_df = load_known_senders(file_list_of_known_senders)  # Laden der bekannten Sender aus der CSV-Datei als Dataframe
             logger.debug(f"Schritt 0: Liste der bekannten Email-Absender: {known_senders_df}'")  # Debugging-Ausgabe: Log-File
             exist_csv_file = True
         else:
-            print(f"\tSchritt 0: Die Tabelle der bekannten Email-Absender '{file_list_of_known_senders}' ist nicht zugänglich bzw. nicht lesbar.")
+            if max_console_output: print(f"\tSchritt 0: Die Tabelle der bekannten Email-Absender '{file_list_of_known_senders}' ist nicht zugänglich bzw. nicht lesbar.")
             exist_csv_file = False
     else:
-        print(f"\tSchritt 0: Die Tabelle der bekannten Email-Absender wird nicht genutzt.")
+        if max_console_output: print(f"\tSchritt 0: Die Tabelle der bekannten Email-Absender wird nicht genutzt.")
         exist_csv_file = False
 
     # Auslesen des msg-Objektes
@@ -104,11 +104,11 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
     # 1. Schritt: Absender-String aus der MSG-Datei abrufen mit alternativer Methode
     if MsgAccessStatus.SUCCESS in msg_object["status"] and MsgAccessStatus.SENDER_MISSING not in msg_object["status"]:
         found_msg_sender_string = msg_object["sender"]  # Absender extrahieren
-        print(f"\tSchritt 1: In MSG-Datei gefundener Absender-String: {found_msg_sender_string}'") # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 1: In MSG-Datei gefundener Absender-String: {found_msg_sender_string}'") # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 1: In MSG-Datei gefundener Absender-String: {found_msg_sender_string}'")  # Debugging-Ausgabe: Log-File
     else:
         found_msg_sender_string = ""
-        print(f"\tSchritt 1: In MSG-Datei keinen Absender-String gefunden.")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 1: In MSG-Datei keinen Absender-String gefunden.")  # Debugging-Ausgabe: Console
         logger.warning(f"Schritt 1: In MSG-Datei keinen Absender-String gefunden.")  # Debugging-Ausgabe: Log-File
 
     # 2. Schritt: Absender-Email aus dem gefundenen Absender-String mithilfe einer Regex-Methode extrahieren
@@ -117,10 +117,10 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
     # Wenn der Absender-String aus der MSG-Datei erfolgreich ausgelesen wurde, dann wird die Absender-Email aus dem Absender-String extrahiert
     if MsgAccessStatus.SUCCESS in msg_object["status"] and MsgAccessStatus.SENDER_MISSING not in msg_object["status"]:
         parsed_sender_email = parse_sender_msg_file(found_msg_sender_string)
-        print(f"\tSchritt 2: Absender-Email in Absender-String der MSG-Datei gefunden: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 2: Absender-Email in Absender-String der MSG-Datei gefunden: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 2: Absender-Email in Absender-String der MSG-Datei gefunden: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Log-File
     else:
-        print(f"\tSchritt 2: Absender-String der MSG-Datei ist fehlerhaft oder unbekannt.")
+        if max_console_output: print(f"\tSchritt 2: Absender-String der MSG-Datei ist fehlerhaft oder unbekannt.")
         logger.debug(f"Schritt 2: Absender-String der MSG-Datei ist fehlerhaft oder unbekannt.")
 
     #  3. Schritt: Wenn im 2. Schritt keine Absender-Email gefunden wurde, dann in der Tabelle der bekannten Absender-Emails nachsehen, ob der Absendername enthalten ist
@@ -132,45 +132,52 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
             if not known_sender_row.empty:
                 parsed_sender_email["sender_email"] = known_sender_row.iloc[0]["sender_email"]
                 parsed_sender_email["contains_sender_email"] = True
-                print(f"\tSchritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Console
+                if max_console_output: print(f"\tSchritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Console
                 logger.debug(f"Schritt 3: In Tabelle gefundene Absender-Email: '{parsed_sender_email['sender_email']}'")  # Debugging-Ausgabe: Log-File
             else:
                 parsed_sender_email["contains_sender_email"] = False
-                print(f"\tSchritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Console
+                if max_console_output: print(f"\tSchritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Console
                 logger.warning(f"Schritt 3: In Tabelle keine Absender-Email für folgenden Absender-String gefunden: '{found_msg_sender_string}'")  # Debugging-Ausgabe: Log-File
         else:
-            print(f"\tSchritt 3: Kein Suchen in der Tabelle der bekannten Email-Absender möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Console
+            if max_console_output: print(f"\tSchritt 3: Kein Suchen in der Tabelle der bekannten Email-Absender möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Console
             logger.debug(f"Schritt 3: Kein Suchen in Tabelle der bekannten Email-Absender möglich: '{file_list_of_known_senders}'")  # Debugging-Ausgabe: Log-File
 
     else:
-        print(f"\tSchritt 3: Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich bzw. gewünscht.")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 3: Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich bzw. gewünscht.")  # Debugging-Ausgabe: Console
         logger.warning(f"Kein Nachschlagen in der Tabelle der bekannten Email-Absender erforderlich bzw. gewünscht.")
 
     # 4. Schritt: Versanddatum abrufen und konvertieren
     if MsgAccessStatus.SUCCESS in msg_object["status"] and MsgAccessStatus.DATE_MISSING not in msg_object["status"]:
         datetime_stamp = msg_object['date']
         datetime_stamp = convert_to_utc_naive(datetime_stamp)  # Sicherstellen, dass der Zeitstempel zeitzonenunabhängig ist
-        print(f"\tSchritt 4: Versanddatum abrufen und konvertieren: '{datetime_stamp}'")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 4: Versanddatum abrufen und konvertieren: '{datetime_stamp}'")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 4: Versanddatum abrufen und konvertieren: '{datetime_stamp}'")  # Debugging-Ausgabe: Log-File
 
         # 4a. Schritt: Formatiertes Versanddatum ermitteln
-        formatted_timestamp = format_datetime(datetime_stamp, format_string)  # Formatieren des Zeitstempels
-        print(f"\tSchritt 4a: Formatiertes Versanddatum: '{formatted_timestamp}'")  # Debugging-Ausgabe: Console
+        try: 
+            formatted_timestamp = format_datetime(datetime_stamp, format_string)  # Formatieren des Zeitstempels
+        except ValueError as e:
+            datetime_stamp = ""
+            formatted_timestamp = ""
+            if max_console_output: print(f"\tSchritt 4: Kein Versanddatum gefunden, wegen Fehler: '{e}'")  # Debugging-Ausgabe: Console
+            logger.debug(f"Schritt 4: Kein Versanddatum gefunden, wegen Fehler: '{e}'")  # Debugging-Ausgabe: Log-File
+
+        if max_console_output: print(f"\tSchritt 4a: Formatiertes Versanddatum: '{formatted_timestamp}'")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 4a: Formatiertes Versanddatum: '{formatted_timestamp}'")  # Debugging-Ausgabe: Log-File
     else:
         datetime_stamp = ""
         formatted_timestamp = ""
-        print(f"\tSchritt 4: Kein Versanddatum gefunden: '{msg_object['status']}'")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 4: Kein Versanddatum gefunden: '{msg_object['status']}'")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 4: Kein Versanddatum gefunden: '{msg_object['status']}'")  # Debugging-Ausgabe: Log-File
 
     if MsgAccessStatus.SUCCESS in msg_object["status"] and MsgAccessStatus.SUBJECT_MISSING not in msg_object["status"]:
         msg_subject = msg_object["subject"]
-        print(f"\tSchritt 5: Ermittelter Betreff: '{msg_subject}'")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 5: Ermittelter Betreff: '{msg_subject}'")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 5: Betreff ermitteln: '{msg_subject}'")  # Debugging-Ausgabe: Log-File
 
         # 6. Schritt: Betreff bereinigen
         msg_subject_sanitized = custom_sanitize_text(msg_subject)  # Betreff bereinigen
-        print(f"\tSchritt 6: Bereinigten Betreff ermitteln: '{msg_subject_sanitized}'")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 6: Bereinigten Betreff ermitteln: '{msg_subject_sanitized}'")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 6: Bereinigten Betreff ermitteln: '{msg_subject_sanitized}'")  # Debugging-Ausgabe: Log-File
 
     else:
@@ -180,11 +187,11 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
     # 7. Schritt: Neuen Namen der Datei festlegen
     new_msg_filename = f"{formatted_timestamp}_{parsed_sender_email['sender_email']}_{msg_subject_sanitized}.msg"
     msg_pathname = os.path.dirname(msg_path_and_filename)  # Verzeichnisname der MSG-Datei
-    print(f"\tSchritt 7: Neuer Dateiname: '{new_msg_filename}'")  # Debugging-Ausgabe: Console
+    if max_console_output: print(f"\tSchritt 7: Neuer Dateiname: '{new_msg_filename}'")  # Debugging-Ausgabe: Console
     logger.debug(f"Schritt 7: Neuer Dateiname: '{new_msg_filename}'")  # Debugging-Ausgabe: Log-File
 
     new_msg_path_and_filename = os.path.join(msg_pathname, new_msg_filename)  # Neuer absoluter Dateipfad
-    print(f"\tSchritt 8: Neuer absoluter Dateiname: '{new_msg_path_and_filename}'")  # Debugging-Ausgabe: Console
+    if max_console_output: print(f"\tSchritt 8: Neuer absoluter Dateiname: '{new_msg_path_and_filename}'")  # Debugging-Ausgabe: Console
     logger.debug(f"Schritt 8: Neuer absoluter Dateiname: '{new_msg_path_and_filename}'")  # Debugging-Ausgabe: Log-File
 
     # 9. Schritt: Kürzen des Dateinamens, falls nötig
@@ -192,13 +199,13 @@ def generate_new_msg_filename(msg_path_and_filename, use_list_of_known_senders=F
         new_truncated_msg_path_and_filename = truncate_filename_if_needed(new_msg_path_and_filename, max_path_length, "...msg")
         new_truncated_msg_filename = os.path.basename(new_truncated_msg_path_and_filename)
         is_msg_filename_truncated = True
-        print(f"\tSchritt 9: Neuer gekürzter Dateiname: '{new_truncated_msg_filename}'")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 9: Neuer gekürzter Dateiname: '{new_truncated_msg_filename}'")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 9: Neuer gekürzter Dateiname: '{new_truncated_msg_filename}'")  # Debugging-Ausgabe: Log-File
     else:
         new_truncated_msg_path_and_filename = new_msg_path_and_filename
         new_truncated_msg_filename = new_msg_filename
         is_msg_filename_truncated = False
-        print(f"\tSchritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Console
+        if max_console_output: print(f"\tSchritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Console
         logger.debug(f"Schritt 9: Kein Kürzen des Dateinamens erforderlich.")  # Debugging-Ausgabe: Log-File
 
     # Ausgabe aller Informationen
