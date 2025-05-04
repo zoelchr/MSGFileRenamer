@@ -8,3 +8,4 @@ config/known_senders.csv
 *.pyc
 config/known_senders.csv
 debug_msgfilerenamer.txt
+msg_file_renamer_SHAPTH.bat
