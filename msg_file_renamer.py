@@ -66,7 +66,7 @@ Kommandozeilenargumente:
     Gibt an, ob vorhandene PDF-Dateien überschrieben werden sollen.
     Bei True wird eine ggf. schon vorhandene, gleichnamige PDF-Datei überschrieben,
     bei False bleibt die bestehende PDF-Datei erhalten.
---min_console_output
+--max_console_output
     Reduzierte Ausgabe des Vorgangs auf der Console
 
 Kommandozeilenargumente speziell zu Testzwecken
@@ -129,11 +129,9 @@ from utils.testset_preparation import prepare_test_directory
 from utils.pdf_generation import generate_pdf_from_msg
 from pathlib import Path
 
-print("")
-os.system('chcp 65001')  # Setzt Konsole auf UTF-8
-#original_stdout = sys.stdout
-#sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
-print("")
+#print("")
+os.system('chcp 65001  > nul')  # Setzt Konsole auf UTF-8
+#print("")
 
 # Verzeichnisse für die Tests definieren
 # SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short-longpath'
@@ -243,7 +241,7 @@ if __name__ == '__main__':
     excel_log_file_path = os.path.join(excel_log_directory, excel_log_basename) # Pfad und Dateiname für die Excel-Log-Datei
 
     # Zusätzlicher Sheetname
-    excel_log_sheet_name = "Ergebnis"
+    #excel_log_sheet_name = "Ergebnis"
     
     # Debug-Datei (nutzt den gleichen Namen wie die Excel-Log-Datei, aber mit Endung *.txt)
     debug_log_directory = args.debug_log_directory
@@ -533,11 +531,13 @@ if __name__ == '__main__':
                                 if MAX_CONSOLE_OUTPUT: print(f"\tPDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
                                 logging.info(f"PDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
                                 pdf_file_skipped += 1
+                                is_pdf_file_skipped = True
                             else:
                                 generate_pdf_from_msg(new_path_and_file_name, 800)
                                 if MAX_CONSOLE_OUTPUT: print(f"\tPDF-Datei '{pdf_path}' erzeugt.")
                                 logging.info(f"PDF-Datei '{pdf_path}' erzeugt.")
                                 pdf_file_generated += 1
+                                is_pdf_file_generated = True
 
                 elif FileAccessStatus.READABLE in access_result:
                     if MAX_CONSOLE_OUTPUT: print(f"\tNur lesender Zugriff auf die Datei möglich.")
@@ -598,14 +598,20 @@ if __name__ == '__main__':
     print(f"Debug-Datei: {prog_log_file_path}")
     print(f"Excel-Log-Datei: {excel_log_file_path}")
 
-    # Schreibe Ergebnis Sheet
+    # Schreibe Konfigurations Sheet
     entry = [
         { "Konfiguration": "Testlauf?", "Wert": TEST_RUN },
         { "Konfiguration": "Testverzeichnis initialisieren?", "Wert": INIT_TESTDATA },
         { "Konfiguration": "Verzeichnis für die Suche nach MSG-Dateien", "Wert": TARGET_DIRECTORY },
         { "Konfiguration": "Bei Bedarf in der Tabelle der bekannten Email-Absender?", "Wert": RECURSIVE_SEARCH },
         { "Konfiguration": "Rekursive Suche?", "Wert": USE_KNOWNSENDER_FILE },
-        { "Konfiguration": "Pfad zur Datei der bekannten Email-Absender", "Wert": KNOWNSENDER_FILE }
+        { "Konfiguration": "Pfad zur Datei der bekannten Email-Absender", "Wert": KNOWNSENDER_FILE },
+        { "Konfiguration": "Zeitstempel der MSG-Dateien anpassen?", "Wert": SET_FILEDATE },
+        { "Konfiguration": "PDF-Dateien erzeugen?", "Wert": GENERATE_PDF },
+        { "Konfiguration": "Existierende PDF-Dateien überschreiben?", "Wert": OVERWRITE_PDF },
+        { "Konfiguration": "Debug-Mode?", "Wert": DEBUG_MODE },
+        { "Konfiguration": "Debug-Datei", "Wert": prog_log_file_path },
+        { "Konfiguration": "Excel-Log-Datei", "Wert": excel_log_file_path }
     ]
     log_entry_neu(excel_log_file_path, entry, sheet_name="Konfiguration")
 
@@ -617,6 +623,15 @@ if __name__ == '__main__':
     print(f"Anzahl der Dateien mit Problemen: {msg_file_problem_count}")
     print(f"Anzahl gekürzte Dateinamen: {msg_file_shorted_name_count}")
 
+    # Schreibe Zusammenfassung Sheet Teil 1
+    entry = [
+        { "Ergebnis": "Anzahl der gefundenen MSG-Dateien", "Wert": msg_file_count },
+        { "Ergebnis": "Anzahl der bereits mit korrekten Namen existierenden MSG-Dateien", "Wert": msg_file_same_name_count },
+        { "Ergebnis": "Anzahl der Dateien mit Problemen", "Wert": msg_file_problem_count },
+        { "Ergebnis": "Anzahl gekürzte Dateinamen", "Wert": msg_file_shorted_name_count }
+    ]
+    log_entry_neu(excel_log_file_path, entry, sheet_name="Zusammenfassung")
+
     if not TEST_RUN:
         print(f"\nErgebnisse der Anpassungen:")
         print(f"***************************")
@@ -624,6 +639,15 @@ if __name__ == '__main__':
         print(f"Anzahl gefundener Doubletten: {msg_file_doublette_count}")
         print(f"Anzahl gelöschter Doubletten: {msg_file_doublette_deleted_count}")
         print(f"Anzahl nicht gelöschter Doubletten: {msg_file_doublette_deleted_problem_count}")
+
+        # Schreibe Zusammenfassung Sheet Teil 2
+        entry = [
+            { "Ergebnis": "Anzahl der umbenannten Dateien", "Wert": msg_file_renamed_count },
+            { "Ergebnis": "Anzahl gefundener Doubletten", "Wert": msg_file_doublette_count },
+            { "Ergebnis": "Anzahl gelöschter Doubletten", "Wert": msg_file_doublette_deleted_count },
+            { "Ergebnis": "Anzahl nicht gelöschter Doubletten", "Wert": msg_file_doublette_deleted_problem_count }
+        ]
+        log_entry_neu(excel_log_file_path, entry, sheet_name="Zusammenfassung")
 
         if SET_FILEDATE:
             print(f"\nErgebnisse bei Anpassung File-Datum:")
@@ -635,14 +659,28 @@ if __name__ == '__main__':
             print(f"Anzahl MSG-Dateien mit nicht geändertem Änderungssdatum: {msg_file_modification_date_unchanged_count}")
             print(f"Anzahl MSG-Dateien wo Anpassung Änderungsdatum nicht möglich: {msg_file_modification_date_problem_count}")
 
+            # Schreibe Zusammenfassung Sheet Teil 3
+            entry = [
+                { "Ergebnis": "Anzahl MSG-Dateien mit geändertem Erstellungsdatum", "Wert": msg_file_file_creation_date_count },
+                { "Ergebnis": "Anzahl MSG-Dateien mit nicht geändertem Erstellungsdatum", "Wert": msg_file_creation_date_unchanged_count },
+                { "Ergebnis": "Anzahl MSG-Dateien wo Anpassung Erstellungsdatum nicht möglich", "Wert": msg_file_creation_date_problem_count },
+                { "Ergebnis": "Anzahl MSG-Dateien mit geändertem Änderungsdatum", "Wert": msg_file_modification_date_count },
+                { "Ergebnis": "Anzahl MSG-Dateien mit nicht geändertem Änderungssdatum", "Wert": msg_file_modification_date_unchanged_count },
+                { "Ergebnis": "Anzahl MSG-Dateien wo Anpassung Änderungsdatum nicht möglich", "Wert": msg_file_modification_date_problem_count }
+            ]
+            log_entry_neu(excel_log_file_path, entry, sheet_name="Zusammenfassung")
+
         if GENERATE_PDF:
             print(f"\nErgebniss der PDF-Erzeugung:")
             print(f"****************************")
             print(f"Anzahl der erzeugten PDF-Dateien: {pdf_file_generated}")
             print(f"Anzahl der übersprungenen PDF-Dateien: {pdf_file_skipped}")
 
-    # Aufräumen
-    #sys.stdout.close()
-    #sys.stdout = original_stdout  # Optional: Wiederherstellen für spätere Nutzung
+            # Schreibe Zusammenfassung Sheet Teil 4
+            entry = [
+                { "Ergebnis": "Anzahl der erzeugten PDF-Dateien", "Wert": pdf_file_generated },
+                { "Ergebnis": "Anzahl der übersprungenen PDF-Dateien", "Wert": pdf_file_skipped }
+            ]
+            log_entry_neu(excel_log_file_path, entry, sheet_name="Zusammenfassung")
 
     logging.shutdown()

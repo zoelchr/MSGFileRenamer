@@ -216,7 +216,7 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
 
         is_generate_pdf_successful = True
 
-        print(f"\tDie PDF wurde unter '{os.path.abspath(pdf_path_and_filename)}' gespeichert.")
+        logger.debug(f"\tDie PDF wurde unter '{os.path.abspath(pdf_path_and_filename)}' gespeichert.")
 
     else:
         print(f"\tDie MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden. Status: {msg_object['status']}")
