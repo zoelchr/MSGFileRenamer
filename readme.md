@@ -19,28 +19,28 @@ Diese Anleitung richtet sich an alle, die das Programm einfach ausprobieren möc
 - Navigiere in das Unterverzeichnis `.\dist`
 - Wähle das gewünschte Release aus, z.B.:
   ```
-  .\dist\MSGFileRenamer 1.0
+  .\dist\MSGFileRenamer 1.1
   ```
 - Kopiere dieses Verzeichnis auf deinen Rechner
 
 ### 2. Programm starten
 - Das Programm wird über die Batch-Datei gestartet:
   ```
-  .\MSGFileRenamer 1.0\msg_file_renamer.bat
+  .\MSGFileRenamer 1.1\msg_file_renamer.bat
   ```
 - Einfach Doppelklick – fertig!
 
 ### 3. Optionale Anpassung: bekannte Absender
 - Bei Bedarf kannst du die Datei anpassen:
   ```
-  .\MSGFileRenamer 1.0\config\known_senders.csv
+  .\MSGFileRenamer 1.1\config\known_senders.csv
   ```
 - Das ist nicht zwingend erforderlich für die Funktion des Programms
 
 ### 4. (Optional) Testdaten nutzen
 - Du kannst eigene MSG-Dateien in folgenden Ordner kopieren:
   ```
-  .\MSGFileRenamer 1.0\tests\functional\testdir
+  .\MSGFileRenamer 1.1\tests\functional\testdir
   ```
 - Auch dieser Schritt ist nicht notwendig, kann aber beim Testen helfen
 
