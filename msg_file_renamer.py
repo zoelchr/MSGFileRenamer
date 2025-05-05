@@ -319,9 +319,22 @@ if __name__ == '__main__':
 
     # Durchsuchen des Zielverzeichnisses nach MSG-Dateien
     # pathname = Verzeichnisname, dirs = Unterverzeichnisse, files = List von Dateien
-    for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
+    if True:
+    # for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
+
+
         # filename = Dateiname
-        for filename in files:
+        # for filename in files:
+
+        for path in Path(TARGET_DIRECTORY).rglob('*.msg'):
+            old_path_and_file_name = str(path)  # Vollständiger Pfad inkl. Dateiname
+            filename = path.name # Nur der Dateiname ohne Pfadangabe
+            pathname = path.parent  # Entspricht dem aktuellen Verzeichnis (parent) der Datei
+
+            if (path.parent != Path(TARGET_DIRECTORY)) and (not RECURSIVE_SEARCH):
+                # Wenn wir nicht mehr im TARGET_DIRECTORY sind, brechen wir die Schleife ab
+                break
+
             logging.debug(f"\n******************************************************************************************************")  # Debugging-Ausgabe: Log-File
 
             # Initialisierung der Variable
@@ -579,7 +592,7 @@ if __name__ == '__main__':
                 log_entry_neu(excel_log_file_path, entry, sheet_name="Log")
 
         # Wenn keine rekursive Suche gewünscht ist, wird die Schleife beendet
-        if (not RECURSIVE_SEARCH): break
+        # if (not RECURSIVE_SEARCH): break
 
     # Ausgabe der wichtigsten Konfigurationen
     print(f"\nÜbersicht der Konfigurationen:")
