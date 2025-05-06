@@ -319,21 +319,27 @@ if __name__ == '__main__':
 
     # Durchsuchen des Zielverzeichnisses nach MSG-Dateien
     # pathname = Verzeichnisname, dirs = Unterverzeichnisse, files = List von Dateien
-    if True:
-    # for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
+
+    # Sicherstellen das TARGET_DIRECTORY ein Pfad ist
+    TARGET_DIRECTORY = Path(TARGET_DIRECTORY)
+
+    # Add the \\?\ prefix to support long paths on Windows
+    TARGET_DIRECTORY = f"\\\\?\\{os.path.abspath(TARGET_DIRECTORY)}"
+
+    for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
 
 
         # filename = Dateiname
-        # for filename in files:
+        for filename in files:
 
-        for path in Path(TARGET_DIRECTORY).rglob('*.msg'):
-            old_path_and_file_name = str(path)  # Vollständiger Pfad inkl. Dateiname
-            filename = path.name # Nur der Dateiname ohne Pfadangabe
-            pathname = path.parent  # Entspricht dem aktuellen Verzeichnis (parent) der Datei
+        #for path in Path(TARGET_DIRECTORY).rglob('*.msg'):
+        #    old_path_and_file_name = str(path)  # Vollständiger Pfad inkl. Dateiname
+        #   filename = path.name # Nur der Dateiname ohne Pfadangabe
+        #    pathname = path.parent  # Entspricht dem aktuellen Verzeichnis (parent) der Datei
 
-            if (path.parent != Path(TARGET_DIRECTORY)) and (not RECURSIVE_SEARCH):
-                # Wenn wir nicht mehr im TARGET_DIRECTORY sind, brechen wir die Schleife ab
-                break
+        #    if (path.parent != Path(TARGET_DIRECTORY)) and (not RECURSIVE_SEARCH):
+        #        # Wenn wir nicht mehr im TARGET_DIRECTORY sind, brechen wir die Schleife ab
+        #        break
 
             logging.debug(f"\n******************************************************************************************************")  # Debugging-Ausgabe: Log-File
 
@@ -353,8 +359,8 @@ if __name__ == '__main__':
                 # Absoluter Pfadname der MSG-Datei
                 path_and_file_name = os.path.join(pathname, filename)
                 # Add the \\?\ prefix to support long paths on Windows
-                if os.name == 'nt':  # Check if the OS is Windows
-                    path_and_file_name = f"\\\\?\\{os.path.abspath(path_and_file_name)}"
+                #path_and_file_name = f"\\\\?\\{os.path.abspath(path_and_file_name)}"
+
                 # Pfadlänge ermitteln
                 path_and_file_name_length = len(path_and_file_name)
                 logging.debug(f"Pfadlänge aktuelle MSG-Datei: '{path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
@@ -403,8 +409,8 @@ if __name__ == '__main__':
                         # Neuen absoluten Pfad erzeugen
                         new_path_and_file_name = os.path.join(pathname, new_file_name)
                         # Add the \\?\ prefix to support long paths on Windows
-                        if os.name == 'nt':  # Check if the OS is Windows
-                            new_path_and_file_name = f"\\\\?\\{os.path.abspath(new_path_and_file_name)}"
+                        #if os.name == 'nt':  # Check if the OS is Windows
+                        #    new_path_and_file_name = f"\\\\?\\{os.path.abspath(new_path_and_file_name)}"
 
                         if MAX_CONSOLE_OUTPUT: print(f"\tNeuer absoluter Pfad: '{new_path_and_file_name}'")
                         logging.debug(f"Neuer absoluter Pfad: '{new_path_and_file_name}'")  # Debugging-Ausgabe: Log-File
@@ -592,7 +598,7 @@ if __name__ == '__main__':
                 log_entry_neu(excel_log_file_path, entry, sheet_name="Log")
 
         # Wenn keine rekursive Suche gewünscht ist, wird die Schleife beendet
-        # if (not RECURSIVE_SEARCH): break
+        if (not RECURSIVE_SEARCH): break
 
     # Ausgabe der wichtigsten Konfigurationen
     print(f"\nÜbersicht der Konfigurationen:")
