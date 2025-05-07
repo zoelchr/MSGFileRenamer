@@ -28,7 +28,7 @@ Funktionen und Prozesse:
   - Alle Änderungen werden auch im Testmode in einer Exceldatei abgespeichert
   - Führt detaillierte Aufzeichnungen über umbenannte Dateien sowie über auftretende Probleme während des Prozesses.
 
-Sepzielle Parameter zur Konfiguration
+Spezielle Parameter zur Konfiguration
 - TARGET_DIRECTORY: Verzeichnis, in dem nach MSG-Dateien gesucht und (optional) auch bearbeitet werden sollen.
 - SOURCE_DIRECTORY_TEST_DATA: Verzeichnis, in dem Testdaten gespeichert sind. Diese Testdaten bleiben immer unverändert.
 - TARGET_DIRECTORY_TEST_DATA: Verzeichnis, in dem während eines Programmlaufs die Testdaten kopiert und dann auch verändert werden.
@@ -119,12 +119,10 @@ import datetime
 import argparse
 import sys
 import importlib.util
-import io
-import pandas as pd
 
 from modules.msg_generate_new_filename import generate_new_msg_filename
 from utils.file_handling import (rename_file, test_file_access, FileAccessStatus, set_file_creation_date, set_file_modification_date, FileOperationResult)
-from modules.msg_handling import create_log_file, log_entry, log_entry_neu, create_log_file_neu
+from modules.msg_handling import log_entry_neu, create_log_file_neu
 from utils.testset_preparation import prepare_test_directory
 from utils.pdf_generation import generate_pdf_from_msg
 from pathlib import Path
@@ -328,7 +326,6 @@ if __name__ == '__main__':
 
     for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
 
-
         # filename = Dateiname
         for filename in files:
 
@@ -381,7 +378,7 @@ if __name__ == '__main__':
                     if MAX_CONSOLE_OUTPUT: print(f"\tSchreibender Zugriff auf die Datei ist möglich.")  # Debugging-Ausgabe: Console
                     logging.debug(f"\tSchreibender Zugriff auf die Datei ist möglich: {filename}")  # Debugging-Ausgabe: Log-File
 
-                    # Neuen Datenamen erzeugen
+                    # Neuen Dateinamen erzeugen
                     new_msg_filename_collection = generate_new_msg_filename(path_and_file_name, use_list_of_known_senders=USE_KNOWNSENDER_FILE, file_list_of_known_senders=KNOWNSENDER_FILE, max_console_output=MAX_CONSOLE_OUTPUT)
 
                     # Wenn Dateiname gekürzt wurde, dann Zähler erhöhen
@@ -598,7 +595,7 @@ if __name__ == '__main__':
                 log_entry_neu(excel_log_file_path, entry, sheet_name="Log")
 
         # Wenn keine rekursive Suche gewünscht ist, wird die Schleife beendet
-        if (not RECURSIVE_SEARCH): break
+        if not RECURSIVE_SEARCH: break
 
     # Ausgabe der wichtigsten Konfigurationen
     print(f"\nÜbersicht der Konfigurationen:")
@@ -617,7 +614,7 @@ if __name__ == '__main__':
     print(f"Debug-Datei: {prog_log_file_path}")
     print(f"Excel-Log-Datei: {excel_log_file_path}")
 
-    # Schreibe Konfigurations Sheet
+    # Schreibe Konfiguration
     entry = [
         { "Konfiguration": "Testlauf?", "Wert": TEST_RUN },
         { "Konfiguration": "Testverzeichnis initialisieren?", "Wert": INIT_TESTDATA },
@@ -675,7 +672,7 @@ if __name__ == '__main__':
             print(f"Anzahl MSG-Dateien mit nicht geändertem Erstellungsdatum: {msg_file_creation_date_unchanged_count}")
             print(f"Anzahl MSG-Dateien wo Anpassung Erstellungsdatum nicht möglich: {msg_file_creation_date_problem_count}")
             print(f"Anzahl MSG-Dateien mit geändertem Änderungsdatum: {msg_file_modification_date_count}")
-            print(f"Anzahl MSG-Dateien mit nicht geändertem Änderungssdatum: {msg_file_modification_date_unchanged_count}")
+            print(f"Anzahl MSG-Dateien mit nicht geändertem Änderungsdatum: {msg_file_modification_date_unchanged_count}")
             print(f"Anzahl MSG-Dateien wo Anpassung Änderungsdatum nicht möglich: {msg_file_modification_date_problem_count}")
 
             # Schreibe Zusammenfassung Sheet Teil 3
@@ -684,13 +681,13 @@ if __name__ == '__main__':
                 { "Ergebnis": "Anzahl MSG-Dateien mit nicht geändertem Erstellungsdatum", "Wert": msg_file_creation_date_unchanged_count },
                 { "Ergebnis": "Anzahl MSG-Dateien wo Anpassung Erstellungsdatum nicht möglich", "Wert": msg_file_creation_date_problem_count },
                 { "Ergebnis": "Anzahl MSG-Dateien mit geändertem Änderungsdatum", "Wert": msg_file_modification_date_count },
-                { "Ergebnis": "Anzahl MSG-Dateien mit nicht geändertem Änderungssdatum", "Wert": msg_file_modification_date_unchanged_count },
+                { "Ergebnis": "Anzahl MSG-Dateien mit nicht geändertem Änderungsdatum", "Wert": msg_file_modification_date_unchanged_count },
                 { "Ergebnis": "Anzahl MSG-Dateien wo Anpassung Änderungsdatum nicht möglich", "Wert": msg_file_modification_date_problem_count }
             ]
             log_entry_neu(excel_log_file_path, entry, sheet_name="Zusammenfassung")
 
         if GENERATE_PDF:
-            print(f"\nErgebniss der PDF-Erzeugung:")
+            print(f"\nErgebnis der PDF-Erzeugung:")
             print(f"****************************")
             print(f"Anzahl der erzeugten PDF-Dateien: {pdf_file_generated}")
             print(f"Anzahl der übersprungenen PDF-Dateien: {pdf_file_skipped}")
