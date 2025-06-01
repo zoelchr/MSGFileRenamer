@@ -69,7 +69,7 @@ echo         oder Default-Zielverzeichnis DEFAULT_ZIELPFAD
 echo =====================================================
 echo.
 :ABFRAGE_DEFAULT_KONFIG_2
-set /p ANTWORT="Soll die Default-Konfiguration verwendet oder abgebrochen werden? (J/N/A)"
+set /p ANTWORT="Soll die Default-Konfiguration verwendet oder abgebrochen werden? (J/N/A) "
 if /i "%ANTWORT%"=="A" (
     echo.
     echo Der Vorgang wird abgebrochen.
@@ -98,7 +98,7 @@ echo   *** Testlauf? ***
 echo =====================================================
 echo.
 :ABFRAGE_TESTLAUF_2
-set /p ANTWORT="Moechtest du einen Testlauf durchfuehren? (J/N/A)"
+set /p ANTWORT="Moechtest du einen Testlauf durchfuehren? (J/N/A) "
 if /i "%ANTWORT%"=="N" (
     set "NOTESTLAUF=--no_test_run"
     echo.
@@ -129,7 +129,7 @@ echo   *** Dateinamen kuerzen? ***
 echo =====================================================
 echo.
 :ABFRAGE_DATEINAMEN_KUERZEN_2
-set /p ANTWORT="Moechtest du die Dateinamen kuerzen? (J/N/A)"
+set /p ANTWORT="Moechtest du die Dateinamen kuerzen? (J/N/A) "
 if /i "%ANTWORT%"=="N" (
     set "NOSHORTENPATHNAME=--no_shorten_path_name"
     echo.
@@ -160,7 +160,7 @@ echo   *** Rekursive Suche? ***
 echo =====================================================
 echo.
 :ABFRAGE_REKURSIVE_SUCHE_2
-set /p ANTWORT="Moechtest du das Verzeichnis rekursiv durchsuchen? (J/N/A)"
+set /p ANTWORT="Moechtest du das Verzeichnis rekursiv durchsuchen? (J/N/A) "
 if /i "%ANTWORT%"=="J" (
     set "RECURSIVESEARCH=--recursive_search"
     echo.
@@ -198,7 +198,7 @@ echo   *** Filedate? ***
 echo =====================================================
 echo.
 :ABFRAGE_FILEDATE_2
-set /p ANTWORT="Moechtest du das Dateidatum anpassen? (J/N/A)"
+set /p ANTWORT="Moechtest du das Dateidatum anpassen? (J/N/A) "
 if /i "%ANTWORT%"=="J" (
     set "SETFILEDATE=--set_filedate"
     echo.
@@ -230,7 +230,7 @@ echo   *** PDF-Erzeugung? ***
 echo =====================================================
 echo.
 :ABFRAGE_PDF_ERZEUGUNG_2
-set /p ANTWORT="Moechtest du zusaetzliche PDF-Dateien erzeugen? (J/N/A)"
+set /p ANTWORT="Moechtest du zusaetzliche PDF-Dateien erzeugen? (J/N/A) "
 if /i "%ANTWORT%"=="J" (
     set "GENERATEPDF=--generate_pdf"
     echo.
@@ -262,7 +262,7 @@ echo   *** PDF-Dateien ueberschreiben? ***
 echo =====================================================
 echo.
 :ABFRAGE_PDF_UEBERSCHREIBEN_2
-set /p ANTWORT="Moechtest du bestehende PDF-Dateien ueberschreiben? (J/N/A)"
+set /p ANTWORT="Moechtest du bestehende PDF-Dateien ueberschreiben? (J/N/A) "
 if /i "%ANTWORT%"=="J" (
     set "OVERWRITEPDF=--overwrite_pdf"
     echo.
@@ -297,7 +297,7 @@ echo Standard-Zielverzeichnis:
 echo   %DEFAULT_ZIELPFAD%
 echo.
 :ABFRAGE_STANDARDPFAD_2
-set /p ANTWORT="Moechtest du diesen Pfad verwenden? (J/N/A)"
+set /p ANTWORT="Moechtest du diesen Pfad verwenden? (J/N/A) "
 if /i "%ANTWORT%"=="J" (
     set "ZIELPFAD=%DEFAULT_ZIELPFAD%"
     echo.
@@ -327,7 +327,16 @@ echo   *** Zielverzeichnis-Validierung ***
 echo ===============================================
 echo.
 :ABFRAGE_ZIELPFAD_2
-set /p ZIELPFAD="Bitte gib den gewuenschten Zielpfad ein: (Windows-konforme Pfadangabe)"
+echo Bitte gib den gewuenschten Zielpfad (Windows-konforme Pfadangabe) ein.
+echo Soll ein Laufwerk als Zielpfad genutzt werden, bitte ohne Backslash am Ende eingeben (z.B. C:)
+set /p ZIELPFAD="Zielpfad "
+for %%A in ("%ZIELPFAD%\") do (
+      if "%%~dA"=="" (
+          echo.
+          echo Fehler: Ungültige Eingabe für den Zielpfad!
+          goto :ENDE
+      )
+)
 if not exist "%ZIELPFAD%\" (
     echo.
     echo ? Fehler: Das Verzeichnis "%ZIELPFAD%" existiert NICHT.
@@ -374,13 +383,13 @@ if "%ENVIRONMENT%"=="Entwicklungsumgebung" (
     echo.
     echo Aktiviere die virtuelle Python-Umgebung
     call "venv\Scripts\activate"
-    echo python msg_file_renamer.py %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
-    python "msg_file_renamer.py" %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
+    echo python msg_file_renamer.py %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%" --debug_mode --max_console_output
+    python "msg_file_renamer.py" %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%" --debug_mode --max_console_output
 ) else (
     echo *** Produktivbetrieb ***
     echo.
-    echo msg_file_renamer.exe %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
-    msg_file_renamer.exe %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%"
+    echo msg_file_renamer.exe %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%" --debug_mode --max_console_output
+    msg_file_renamer.exe %NOTESTLAUF% %SETFILEDATE% %GENERATEPDF% %OVERWRITEPDF% %RECURSIVESEARCH% --search_directory "%ZIELPFAD%" --excel_log_directory "./" %USEKNOWNSENDERFILE% --knownsender_file "%KNOWNSENDERFILE%" --debug_mode --max_console_output
 )
 
 :ENDE

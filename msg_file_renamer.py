@@ -323,6 +323,7 @@ if __name__ == '__main__':
 
     # Add the \\?\ prefix to support long paths on Windows
     TARGET_DIRECTORY = f"\\\\?\\{os.path.abspath(TARGET_DIRECTORY)}"
+    logging.debug(f"TARGET_DIRECTORY: '{TARGET_DIRECTORY}'")  # Debugging-Ausgabe: Log-File
 
     for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
 
