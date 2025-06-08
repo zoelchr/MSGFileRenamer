@@ -194,6 +194,7 @@ def rename_file(current_name: str, new_name: str, retries=3, delay_ms=200, max_c
             #os.rename(current_name, new_name)
             shutil.move(current_name, new_name)
             rename_file_result = FileOperationResult.SUCCESS  # Erfolgreiche Umbenennung
+            break
         except FileNotFoundError:
             if max_console_output: print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
             logging.error(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Log-File
