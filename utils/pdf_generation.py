@@ -22,12 +22,14 @@ Abhängigkeiten:
 """
 
 import os
-import logging
 import re
 from fpdf import FPDF
 from modules.msg_handling import MsgAccessStatus, get_msg_object
 
-logger = logging.getLogger(__name__)
+from logger import initialize_logger
+# In der Log-Datei wird als Quelle der Modulname "__main__" verwendet
+app_logger = initialize_logger(__name__)
+app_logger.debug("Debug-Logging im Modul 'msg_to_pdf' aktiviert.")
 
 def clean_email_text(text):
     """
@@ -120,11 +122,11 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
 
     # Überprüfen, ob der Pfad zu einer existierenden Datei führt
     if os.path.isfile(msg_path_and_filename):
-        logger.debug(f"Schritt 1: Die Datei '{msg_path_and_filename}' existiert.")  # Debugging-Ausgabe: Log-File
+        app_logger.debug(f"Schritt 1: Die Datei '{msg_path_and_filename}' existiert.")  # Debugging-Ausgabe: Log-File
 
         # PDF-Dateiname festlegen
         pdf_path_and_filename = os.path.splitext(msg_path_and_filename)[0] + ".pdf"
-        logger.debug(f"Schritt 2: Dateiname für PDF-Dokument '{pdf_path_and_filename}'.")  # Debugging-Ausgabe: Log-File
+        app_logger.debug(f"Schritt 2: Dateiname für PDF-Dokument '{pdf_path_and_filename}'.")  # Debugging-Ausgabe: Log-File
 
         # Auslesen des msg-Objektes
         msg_object = get_msg_object(msg_path_and_filename)
@@ -190,7 +192,7 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
 
             # Text bereinigen, damit kompakte Darstellung möglich
             cleaned_text = clean_email_text(msg_body)  # <- dein ausgelesener Text
-            logging.debug(f"msg_body nach Bereinigung: {cleaned_text}")  # Debugging-Ausgabe: Log-File
+            app_logger.debug(f"Body-Text wurde bereinigt und besitzt nach Kürzung eine Länge von {len(cleaned_text)}")  # Debugging-Ausgabe: Log-File
 
             # Text ausgeben
             pdf.write(5, f"{cleaned_text}")
@@ -216,10 +218,10 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
 
         is_generate_pdf_successful = True
 
-        logger.debug(f"\tDie PDF wurde unter '{os.path.abspath(pdf_path_and_filename)}' gespeichert.")
+        app_logger.debug(f"\tDie PDF wurde unter '{os.path.abspath(pdf_path_and_filename)}' gespeichert.")
 
     else:
         print(f"\tDie MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden. Status: {msg_object['status']}")
-        logger.debug(f"Die MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden. Status: {msg_object['status']}")
+        app_logger.debug(f"Die MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden. Status: {msg_object['status']}")
 
     return is_generate_pdf_successful, pdf_path_and_filename

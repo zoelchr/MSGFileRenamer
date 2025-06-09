@@ -23,7 +23,6 @@ Importieren Sie dieses Modul in Ihr Skript, um die oben genannten Funktionen zur
 """
 
 import os
-import shutil
 import time
 import pywintypes
 import win32file
@@ -31,10 +30,12 @@ import win32con
 import shutil
 import re
 import datetime
-import logging
 from enum import Enum
+from logger import initialize_logger
 
-logger = logging.getLogger(__name__)
+# In der Log-Datei wird als Quelle der Modulname "__main__" verwendet
+app_logger = initialize_logger(__name__)
+app_logger.debug("Debug-Logging im Modul file_utils.py aktiviert.")
 
 class FileAccessStatus(Enum):
     READABLE = "File is readable"
@@ -125,7 +126,7 @@ def test_file_access(file_path: str) -> list[FileAccessStatus]:
     try:
         # Prüfen, ob die Datei existiert
         if not os.path.exists(file_path):
-            logging.warning(f"Datei nicht gefunden: {file_path}")
+            app_logger.warning(f"Datei nicht gefunden: {file_path}")
             return [FileAccessStatus.NOT_FOUND]
 
         # Prüfen, ob die Datei gesperrt ist (Windows-typisch)
@@ -133,7 +134,7 @@ def test_file_access(file_path: str) -> list[FileAccessStatus]:
             with open(file_path, "a"):  # Testweise öffnen zum Schreiben
                 pass
         except PermissionError:
-            logging.warning(f"Datei ist gesperrt oder nicht schreibbar: {file_path}")
+            app_logger.warning(f"Datei ist gesperrt oder nicht schreibbar: {file_path}")
             access_status.append(FileAccessStatus.LOCKED)
 
         # Prüfen, welche Berechtigungen vorliegen
@@ -148,17 +149,17 @@ def test_file_access(file_path: str) -> list[FileAccessStatus]:
 
         # Falls keine der Berechtigungen vorhanden ist
         if not access_status:
-            logging.warning(f"Kein Zugriff auf Datei: {file_path}")
+            app_logger.warning(f"Kein Zugriff auf Datei: {file_path}")
             access_status.append(FileAccessStatus.NO_PERMISSION)
 
         return access_status
 
     except FileNotFoundError:
-        logging.error(f"Datei wurde nicht gefunden: {file_path}")
+        app_logger.error(f"Datei wurde nicht gefunden: {file_path}")
         return [FileAccessStatus.NOT_FOUND]
 
     except Exception as e:
-        logging.exception(f"Unerwarteter Fehler beim Zugriff auf {file_path}: {e}")
+        app_logger.exception(f"Unerwarteter Fehler beim Zugriff auf {file_path}: {e}")
         return [FileAccessStatus.UNKNOWN_ERROR]
 
 
@@ -189,35 +190,35 @@ def rename_file(current_name: str, new_name: str, retries=3, delay_ms=200, max_c
 
     while attempt < retries:
         try:
-            logging.debug(f"Aktueller Dateiname: {current_name}")  # Debugging-Ausgabe: Log-File
-            logging.debug(f"Neuer Dateiname: {new_name}")  # Debugging-Ausgabe: Log-File
+            app_logger.debug(f"Aktueller Dateiname: {current_name}")  # Debugging-Ausgabe: Log-File
+            app_logger.debug(f"Neuer Dateiname: {new_name}")  # Debugging-Ausgabe: Log-File
             #os.rename(current_name, new_name)
             shutil.move(current_name, new_name)
             rename_file_result = FileOperationResult.SUCCESS  # Erfolgreiche Umbenennung
             break
         except FileNotFoundError:
             if max_console_output: print(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Console
-            logging.error(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Log-File
+            app_logger.error(f"Datei nicht gefunden: {current_name}")  # Debugging-Ausgabe: Log-File
             rename_file_result = FileOperationResult.FILE_NOT_FOUND  # Datei nicht gefunden
         except PermissionError:
             if max_console_output: print(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Console
-            logging.error(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Log-File
+            app_logger.error(f"Berechtigungsfehler bei Zugriff auf Datei: {current_name}")  # Debugging-Ausgabe: Log-File
             rename_file_result = FileOperationResult.PERMISSION_DENIED  # Berechtigungsfehler
         except FileExistsError:
             if max_console_output: print(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Console
-            logging.error(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Log-File
+            app_logger.error(f"Zieldatei existiert bereits: {new_name}")  # Debugging-Ausgabe: Log-File
             return FileOperationResult.DESTINATION_EXISTS
         except IsADirectoryError:
             if max_console_output: print(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Console
-            logging.error(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Log-File
+            app_logger.error(f"Kann nicht umbenennen, da die Quelle eine Datei und das Ziel ein Verzeichnis ist.")  # Debugging-Ausgabe: Log-File
             return FileOperationResult.INVALID_FILENAME1
         except NotADirectoryError:
             if max_console_output: print(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Console
-            logging.error(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Log-File
+            app_logger.error(f"Ein Teil des Pfades ist kein Verzeichnis: {current_name} oder {new_name}")  # Debugging-Ausgabe: Log-File
             return FileOperationResult.INVALID_FILENAME2
         except Exception as e:
             rename_file_result = FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
-            logging.error(f"Fehler bei Umbenennung: {str(e)}")  # Debugging-Ausgabe: Log-File
+            app_logger.error(f"Fehler bei Umbenennung: {str(e)}")  # Debugging-Ausgabe: Log-File
 
         attempt += 1
         time.sleep(delay_ms / 1000)  # Wartezeit in Sekunden
@@ -270,10 +271,10 @@ def delete_file(file_path: str, retries=1, delay_ms=200) -> FileOperationResult:
 
     # Rückgabe im Falle von Misserfolg nach allen Versuchen
     if last_error:
-        logger.error(f"Datei '{file_path}' konnte nicht gelöscht werden: {last_error}")  # Protokolliere den letzten Fehler
+        app_logger.error(f"Datei '{file_path}' konnte nicht gelöscht werden: {last_error}")  # Protokolliere den letzten Fehler
         return FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
     else:
-        logger.error(f"Datei '{file_path}' konnte nicht gelöscht werden.")
+        app_logger.error(f"Datei '{file_path}' konnte nicht gelöscht werden.")
         return FileOperationResult.UNKNOWN_ERROR  # Rückgabe, wenn die Datei nicht gelöscht werden konnte
 
 
@@ -356,19 +357,19 @@ def set_file_modification_date(file_path: str, new_date: str) -> FileOperationRe
         return FileOperationResult.SUCCESS  # Erfolgreich gesetzt
 
     except FileNotFoundError:
-        logger.error(f"Die Datei '{file_path}' wurde nicht gefunden.")  # Protokolliere den Fehler
+        app_logger.error(f"Die Datei '{file_path}' wurde nicht gefunden.")  # Protokolliere den Fehler
         return FileOperationResult.FILE_NOT_FOUND  # Datei nicht gefunden
 
     except PermissionError:
-        logger.error(f"Keine Berechtigung, um das Änderungsdatum der Datei '{file_path}' zu ändern.")  # Protokolliere den Fehler
+        app_logger.error(f"Keine Berechtigung, um das Änderungsdatum der Datei '{file_path}' zu ändern.")  # Protokolliere den Fehler
         return FileOperationResult.PERMISSION_DENIED  # Berechtigungsfehler
 
     except ValueError:
-        logger.error(f"Ungültiges Datumsformat für '{new_date}'.")  # Protokolliere den Fehler
+        app_logger.error(f"Ungültiges Datumsformat für '{new_date}'.")  # Protokolliere den Fehler
         return FileOperationResult.VALUE_ERROR  # Ungültiger Wert
 
     except Exception as e:
-        logger.error(f"Allgemeiner Fehler beim Setzen des Änderungsdatums für '{file_path}': {str(e)}")  # Protokolliere den Fehler
+        app_logger.error(f"Allgemeiner Fehler beim Setzen des Änderungsdatums für '{file_path}': {str(e)}")  # Protokolliere den Fehler
         return FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
 
 
@@ -415,19 +416,19 @@ def set_file_creation_date(file_path: str, new_creation_date: str) -> FileOperat
         return FileOperationResult.SUCCESS  # Erfolgreich gesetzt
 
     except FileNotFoundError:
-        logger.error(f"Die Datei '{file_path}' wurde nicht gefunden.")
+        app_logger.error(f"Die Datei '{file_path}' wurde nicht gefunden.")
         return FileOperationResult.FILE_NOT_FOUND  # Datei nicht gefunden
 
     except PermissionError:
-        logger.error(f"Keine Berechtigung, um das Erstelldatum der Datei '{file_path}' zu ändern.")
+        app_logger.error(f"Keine Berechtigung, um das Erstelldatum der Datei '{file_path}' zu ändern.")
         return FileOperationResult.PERMISSION_DENIED  # Berechtigungsfehler
 
     except ValueError:
-        logger.error(f"Ungültiges Datumsformat für '{new_creation_date}'.")
+        app_logger.error(f"Ungültiges Datumsformat für '{new_creation_date}'.")
         return FileOperationResult.VALUE_ERROR  # Ungültiger Wert
 
     except Exception as e:
-        logger.error(f"Allgemeiner Fehler beim Setzen des Erstelldatums für '{file_path}': {str(e)}")
+        app_logger.error(f"Allgemeiner Fehler beim Setzen des Erstelldatums für '{file_path}': {str(e)}")
         return FileOperationResult.UNKNOWN_ERROR  # Unbekannter Fehler
 
 

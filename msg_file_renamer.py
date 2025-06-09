@@ -112,44 +112,43 @@ Dieses Modul benötigt einige zusätzliche Python-Pakete, die für bestimmte Fun
 - openpyxl:
     Für das Lesen und Schreiben von Excel-Dateien im .xlsx-Format (ab Excel 2007).
 """
-
 import os
-import logging
 import datetime
 import argparse
 import sys
 import importlib.util
-
-from modules.msg_generate_new_filename import generate_new_msg_filename
-from utils.file_handling import (rename_file, test_file_access, FileAccessStatus, set_file_creation_date, set_file_modification_date, FileOperationResult)
-from modules.msg_handling import log_entry_neu, create_log_file_neu
-from utils.testset_preparation import prepare_test_directory
-from utils.pdf_generation import generate_pdf_from_msg
 from pathlib import Path
 
-#print("")
+from modules.msg_generate_new_filename import generate_new_msg_filename
+from utils.file_handling import rename_file, test_file_access, FileAccessStatus, set_file_creation_date, set_file_modification_date, FileOperationResult
+from modules.msg_handling import log_entry_neu, create_log_file_neu
+from utils.excel_handling import clean_old_excel_files
+from utils.testset_preparation import prepare_test_directory
+from utils.pdf_generation import generate_pdf_from_msg
+from config import SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA, MAX_PATH_LENGTH, DEBUG_LEVEL, LOG_FILE_DIRECTORY, MAX_EXCEL_LOG_FILE_COUNT
+
+#import optimierter Logger
+from logger import initialize_logger, clean_logs_and_initialize, DEBUG_LEVEL_TEXT, prog_log_file_path
+
+# Initialisierung im Hauptprogramm
+clean_logs_and_initialize()
+
+# In der Log-Datei wird als Quelle der Modulname "__main__" verwendet
+app_logger = initialize_logger(__name__)
+app_logger.debug("Debug-Logging im Modul 'main' aktiviert.")
+
 os.system('chcp 65001  > nul')  # Setzt Konsole auf UTF-8
-#print("")
 
-# Verzeichnisse für die Tests definieren
-# SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short-longpath'
-SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-public'
-# SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short'
-TARGET_DIRECTORY_TEST_DATA = r'.\tests\functional\testdir'
-TARGET_DIRECTORY = ""
-LIST_OF_KNOWN_SENDERS = r'.\config\known_senders.csv' # Liste der bekannten Email-Absender aus einer CSV-Datei
-
-# Maximal zulässige Pfadlänge für Windows 11
-MAX_PATH_LENGTH = 260
-
-def setup_logging(file, debug=False):
-    log_level=logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        filename=file
-    )
+# # Verzeichnisse für die Tests definieren
+# # SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short-longpath'
+# SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-public'
+# # SOURCE_DIRECTORY_TEST_DATA = r'.\data\sample_files\testset-short'
+# TARGET_DIRECTORY_TEST_DATA = r'.\tests\functional\testdir'
+# TARGET_DIRECTORY = ""
+# LIST_OF_KNOWN_SENDERS = r'.\config\known_senders.csv' # Liste der bekannten Email-Absender aus einer CSV-Datei
+#
+# # Maximal zulässige Pfadlänge für Windows 11
+# MAX_PATH_LENGTH = 260
 
 def check_module_installed(module_name: str, install_text: str):
     """
@@ -166,15 +165,25 @@ def check_module_installed(module_name: str, install_text: str):
     dass alle erforderlichen Abhängigkeiten vorhanden sind, bevor der Hauptteil des Programms ausgeführt wird.
     """
     if importlib.util.find_spec(module_name) is None:
+        app_logger.error(f"Das Modul '{module_name}' ist nicht installiert.")
         print(f"Fehler: Das Modul '{module_name}' ist nicht installiert.")
         print("Bitte installieren Sie das fehlende Modul und starten Sie das Programm erneut.\n")
         print("Dazu zuerst in das Verzeichnis mit der Datei 'msg_file_renamer.bat' wechseln und dort ein Windows Terminal öffnen.")
         print(r"Dann die zugehörige virtuelle Python-Umgebung durch '.\venv\Scripts\activate.bat' aktivieren.")
         print("Eventuell hat das Verzeichnis für die virtuelle Python-Umgebung statt 'venv' auch einen anderen Namen.")
         print(f"Anschließend kann das fehlende Modul über die folgende Eingabe installiert werden:\n '{install_text}'")
+        app_logger.error(f"Das Programm wird beendet.")
         sys.exit(1)
+    else:
+        app_logger.debug(f"Das Modul '{module_name}' ist installiert.")
 
 if __name__ == '__main__':
+
+    app_logger.info(f"Programm Logdatei: {LOG_FILE_DIRECTORY}")
+    debug_level_text = DEBUG_LEVEL_TEXT.get(DEBUG_LEVEL, "UNKNOWN")
+
+    app_logger.info(f"Debug-Modus: {debug_level_text}")
+    app_logger.info("Programm gestartet")
 
     # Überprüfen, ob die erforderlichen Module installiert sind
     check_module_installed('extract_msg', "pip install extract_msg --trusted-host pypi.org --trusted-host files.pythonhosted.org")
@@ -204,98 +213,102 @@ if __name__ == '__main__':
 
     # Unbekannte Parameter ausgeben und Programm beenden
     if unknown:
+        app_logger.error(f"Unbekannte Parameter gefunden: {unknown}")
         print(f"Warnung: Unbekannte Parameter gefunden: {unknown}")
         print("Bitte überprüfen Sie die übergebenen Parameter.")
+        app_logger.error(f"Das Programm wird beendet.")
         exit()
 
+    # Formatierung der Argumente für die Ausgabe auf der Console oder dem Log-File
     args_formatted = str(args).replace(",", "\n\t\t").replace("Namespace", "").strip("()")
 
     # Argumente des Programmaufrufs an die Variablen übergeben
-    INIT_TESTDATA = args.init_testdata
-    SET_FILEDATE = args.set_filedate
     DEBUG_MODE = args.debug_mode
-    TEST_RUN = not args.no_test_run
-    NO_SHORTEN_PATH_NAME = args.no_shorten_path_name
-    GENERATE_PDF = args.generate_pdf
-    OVERWRITE_PDF = args.overwrite_pdf
-    RECURSIVE_SEARCH = args.recursive_search
+    MAX_CONSOLE_OUTPUT = args.max_console_output
     USE_KNOWNSENDER_FILE = args.use_knownsender_file
     KNOWNSENDER_FILE = args.knownsender_file
-    MAX_CONSOLE_OUTPUT = args.max_console_output
+    INIT_TESTDATA = args.init_testdata
+    TEST_RUN = not args.no_test_run
+    RECURSIVE_SEARCH = args.recursive_search
+    NO_SHORTEN_PATH_NAME = args.no_shorten_path_name
+    SET_FILEDATE = args.set_filedate
+    GENERATE_PDF = args.generate_pdf
+    OVERWRITE_PDF = args.overwrite_pdf
 
-    if MAX_CONSOLE_OUTPUT: print(f"\n****************************************************")
-    if MAX_CONSOLE_OUTPUT: print(f"* Informationen zum Programmstart.")
-    if MAX_CONSOLE_OUTPUT: print(f"****************************************************")
-    if MAX_CONSOLE_OUTPUT: print(f"\nÜbergebene Argumente:\n\t\t {args_formatted}") # Debugging-Ausgabe: Console
+    app_logger.debug(f"Argumente:")
+    # Alles mit Fokus Debug
+    app_logger.info(f"DEBUG_MODE = {DEBUG_MODE}")
+    app_logger.info(f"MAX_CONSOLE_OUTPUT = {MAX_CONSOLE_OUTPUT}")
+    # Known-Sender-File
+    app_logger.info(f"USE_KNOWSENDER_FILE = {USE_KNOWNSENDER_FILE}")
+    app_logger.info(f"KNOWSENDER_FILE = {KNOWNSENDER_FILE}")
+    # Test-Initialisierung
+    app_logger.info(f"INIT_TESTDATA = {INIT_TESTDATA}")
+    app_logger.info(f"TEST_RUN = {TEST_RUN}")
+    # Ablaufsteuerung
+    app_logger.info(f"RECURSIVE_SEARCH = {RECURSIVE_SEARCH}")
+    app_logger.info(f"NO_SHORTEN_PATH_NAME = {NO_SHORTEN_PATH_NAME}")
+    app_logger.info(f"SET_FILEDATE = {SET_FILEDATE}")
+    app_logger.info(f"GENERATE_PDF = {GENERATE_PDF}")
+    app_logger.info(f"OVERWRITE_PDF = {OVERWRITE_PDF}")
 
     # Start Ausgabe auf Console
     if MAX_CONSOLE_OUTPUT: print(f"\nTestlauf: {TEST_RUN}\nTestverzeichnis initialisieren: {INIT_TESTDATA}\nZeitstempel der MSG-dateien anpassen: {SET_FILEDATE}\nDebug-Modus: {DEBUG_MODE}")
 
-    TARGET_DIRECTORY = Path(args.search_directory) # Verzeichnis für die Suche nach MSG-Dateien
-
     # Excel-Log-Datei
-    excel_log_directory = args.excel_log_directory # Verzeichnis für die Excel-Log-Datei
-    excel_log_basename = args.excel_log_basename # Basisname für die Excel-Log-Datei
-    excel_log_file_path = os.path.join(excel_log_directory, excel_log_basename) # Pfad und Dateiname für die Excel-Log-Datei
-
-    # Zusätzlicher Sheetname
-    #excel_log_sheet_name = "Ergebnis"
-    
-    # Debug-Datei (nutzt den gleichen Namen wie die Excel-Log-Datei, aber mit Endung *.txt)
-    debug_log_directory = args.debug_log_directory
-    prog_log_file_path = os.path.join(debug_log_directory, "debug_msgfilerenamer" + ".txt") # Pfad und Dateiname für die Debug-Log-Datei
-
-    # Logging für Test und Debugging konfigurieren
-    setup_logging(prog_log_file_path, DEBUG_MODE)
-    logger = logging.getLogger(prog_log_file_path)
-    # Logging für die Programm-Ausführung
-    logger.info("Programm gestartet")
-    logger.info(f"Debug-Modus: {DEBUG_MODE}")
-    logging.info(f"Programm Logdatei: {prog_log_file_path}")
+    EXCEL_LOG_DIRECTORY = args.excel_log_directory # Verzeichnis für die Excel-Log-Datei
+    excel_log_basename = "excel_log_file_" # Basisname für die Excel-Log-Datei
+    excel_log_file_path = os.path.join(EXCEL_LOG_DIRECTORY, excel_log_basename) # Pfad und Dateiname für die Excel-Log-Datei
+    app_logger.info(f"EXCEL_LOG_DIRECTORY = {EXCEL_LOG_DIRECTORY}")
 
     # Verzeichnis für die Suche festlegen
+    TARGET_DIRECTORY = Path(args.search_directory) # Verzeichnis für die Suche nach MSG-Dateien
     if not TARGET_DIRECTORY:
         TARGET_DIRECTORY = TARGET_DIRECTORY_TEST_DATA
+        app_logger.info(f"TARGET_DIRECTORY = TARGET_DIRECTORY_TEST_DATA aus env-Datei übernommen: {TARGET_DIRECTORY_TEST_DATA}")
+    else:
+        app_logger.info(f"TARGET_DIRECTORY = {TARGET_DIRECTORY}")
 
     print(f"\n************************************************************************")
     print(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}") # Debugging-Ausgabe: Console
     print(f"************************************************************************")
-    logging.debug(f"Verzeichnis für die Suche: {TARGET_DIRECTORY}")  # Debugging-Ausgabe: Log-File
 
     # Log-Verzeichnis und Basisname für Excel-Logdateien festlegen
     LOG_TABLE_HEADER = ["Fortlaufende Nummer", "Verzeichnisname", "Original-Filename"]
 
     # Excel-Logdatei erstellen und den Pfad ausgeben
-    excel_log_file_path = create_log_file_neu(excel_log_basename, excel_log_directory, LOG_TABLE_HEADER, sheet_name="Log")
+    excel_log_file_path = create_log_file_neu(excel_log_basename, EXCEL_LOG_DIRECTORY, LOG_TABLE_HEADER, sheet_name="Log")
     if MAX_CONSOLE_OUTPUT: print(f"Excel-Logdatei erstellt: {excel_log_file_path}")
+    app_logger.info(f"Excel-Logdatei = {excel_log_file_path}")
 
-    # Abhängig von INIT_TESTDATA wird das Testverzeichnis vorbereitet oder nicht
-    if MAX_CONSOLE_OUTPUT: print(f"Soll das Testverzeichnis vorbereitet werden? {INIT_TESTDATA}") # Debugging-Ausgabe: Console
-    logging.debug(f"Soll das Testverzeichnis vorbereitet werden? {INIT_TESTDATA}")  # Debugging-Ausgabe: Log-File
+    # Ältere Excel-Logdatei löschen
+    deleted_excel_file_count = clean_old_excel_files(EXCEL_LOG_DIRECTORY, MAX_EXCEL_LOG_FILE_COUNT, "excel_log_file_")
 
     if INIT_TESTDATA:
         if MAX_CONSOLE_OUTPUT: print(f"Prüfung ob Zielverzeichnis für Testdaten bereits existiert: {TARGET_DIRECTORY_TEST_DATA}") # Debugging-Ausgabe: Console
-        logging.debug(f"Prüfung ob Zielverzeichnis für Testdaten bereits existiert: {TARGET_DIRECTORY_TEST_DATA}")  # Debugging-Ausgabe: Log-File
+        app_logger.debug(f"Prüfung ob Zielverzeichnis für Testdaten bereits existiert: {TARGET_DIRECTORY_TEST_DATA}")  # Debugging-Ausgabe: Log-File
 
         # Wenn TARGET_DIRECTORY_TEST_DATA noch nicht existiert, dann erstellen
         if not os.path.isdir(TARGET_DIRECTORY_TEST_DATA):
             os.makedirs(TARGET_DIRECTORY_TEST_DATA, exist_ok=True)
             if MAX_CONSOLE_OUTPUT: print(f"Zielverzeichnis neu erstellt: {TARGET_DIRECTORY_TEST_DATA}")
+            app_logger.debug(f"Zielverzeichnis neu erstellt: {TARGET_DIRECTORY_TEST_DATA}")
         else:
             if MAX_CONSOLE_OUTPUT: print(f"Zielverzeichnis existiert bereits: {TARGET_DIRECTORY_TEST_DATA}")
+            app_logger.debug(f"Zielverzeichnis existiert bereits: {TARGET_DIRECTORY_TEST_DATA}")
 
         # Bereite das Zielverzeichnis vor und überprüfe den Erfolg
         success = prepare_test_directory(SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA)
         if success:
             if MAX_CONSOLE_OUTPUT: print("Vorbereitung des Testverzeichnisses erfolgreich abgeschlossen.") # Debugging-Ausgabe: Console
-            logging.error("\tVorbereitung des Testverzeichnisses erfolgreich abgeschlossen.")  # Debugging-Ausgabe: Log-File
+            app_logger.debug("\tVorbereitung des Testverzeichnisses erfolgreich abgeschlossen.")  # Debugging-Ausgabe: Log-File
         else:
             if MAX_CONSOLE_OUTPUT: print("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.") # Debugging-Ausgabe: Console
-            logging.error("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.")  # Debugging-Ausgabe: Log-File
+            app_logger.error("Fehler: Die Vorbereitung des Testverzeichnisses ist fehlgeschlagen. Das Programm wird abgebrochen.")  # Debugging-Ausgabe: Log-File
             exit(1)  # Programm abbrechen
     else:
         if MAX_CONSOLE_OUTPUT: print(f"Kein Testverzeichnis vorbereitet.") # Debugging-Ausgabe: Console
-        logging.debug(f"Kein Testverzeichnis vorbereitet.")  # Debugging-Ausgabe: Log-File
+        app_logger.debug(f"Kein Testverzeichnis vorbereitet.")  # Debugging-Ausgabe: Log-File
 
     # Zähler für gefundene sowie umbenannte Dateien und Probleme initialisieren
     msg_file_count = 0
@@ -315,31 +328,19 @@ if __name__ == '__main__':
     pdf_file_generated = 0
     pdf_file_skipped = 0
 
-    # Durchsuchen des Zielverzeichnisses nach MSG-Dateien
-    # pathname = Verzeichnisname, dirs = Unterverzeichnisse, files = List von Dateien
-
     # Sicherstellen das TARGET_DIRECTORY ein Pfad ist
     TARGET_DIRECTORY = Path(TARGET_DIRECTORY)
 
     # Add the \\?\ prefix to support long paths on Windows
     TARGET_DIRECTORY = f"\\\\?\\{os.path.abspath(TARGET_DIRECTORY)}"
-    logging.debug(f"TARGET_DIRECTORY: '{TARGET_DIRECTORY}'")  # Debugging-Ausgabe: Log-File
+    app_logger.debug(f"TARGET_DIRECTORY (Windows Long Path Format) = '{TARGET_DIRECTORY}'")  # Debugging-Ausgabe: Log-File
 
     for pathname, dirs, files in os.walk(TARGET_DIRECTORY):
 
         # filename = Dateiname
         for filename in files:
 
-        #for path in Path(TARGET_DIRECTORY).rglob('*.msg'):
-        #    old_path_and_file_name = str(path)  # Vollständiger Pfad inkl. Dateiname
-        #   filename = path.name # Nur der Dateiname ohne Pfadangabe
-        #    pathname = path.parent  # Entspricht dem aktuellen Verzeichnis (parent) der Datei
-
-        #    if (path.parent != Path(TARGET_DIRECTORY)) and (not RECURSIVE_SEARCH):
-        #        # Wenn wir nicht mehr im TARGET_DIRECTORY sind, brechen wir die Schleife ab
-        #        break
-
-            logging.debug(f"\n******************************************************************************************************")  # Debugging-Ausgabe: Log-File
+            app_logger.debug(f"**************************BEARBEITUNG NÄCHSTE MSG DAIEI************************************")  # Debugging-Ausgabe: Log-File
 
             # Initialisierung der Variable
             is_msg_file_name_unchanged = False
@@ -352,19 +353,17 @@ if __name__ == '__main__':
             # Überprüfen, ob die Datei die Endung .msg hat
             if filename.lower().endswith('.msg'):
                 print(f"MSG-Datei: '{filename}'")  # Debugging-Ausgabe: Console
-                logging.debug(f"\nMSG-Datei: '{filename}'")  # Debugging-Ausgabe: Log-File
+                app_logger.debug(f"Aktuelle MSG-Datei zur Bearbeitung: '{filename}'")  # Debugging-Ausgabe: Log-File
 
                 # Absoluter Pfadname der MSG-Datei
                 path_and_file_name = os.path.join(pathname, filename)
-                # Add the \\?\ prefix to support long paths on Windows
-                #path_and_file_name = f"\\\\?\\{os.path.abspath(path_and_file_name)}"
 
                 # Pfadlänge ermitteln
                 path_and_file_name_length = len(path_and_file_name)
-                logging.debug(f"Pfadlänge aktuelle MSG-Datei: '{path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
+                app_logger.debug(f"Pfadlänge aktuelle MSG-Datei: '{path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
 
                 if MAX_CONSOLE_OUTPUT: print(f"\tAktuelles Verzeichnis: '{os.path.dirname(path_and_file_name)}'")  # Debugging-Ausgabe: Console
-                logging.debug(f"\tAktuelles Verzeichnis: '{os.path.dirname(path_and_file_name)}'")  # Debugging-Ausgabe: Log-File
+                app_logger.debug(f"Aktuelles Verzeichnis: '{os.path.dirname(path_and_file_name)}'")  # Debugging-Ausgabe: Log-File
 
                 msg_file_count += 1 # Zähler erhöhen, MSG-Datei gefunden
 
@@ -372,18 +371,16 @@ if __name__ == '__main__':
                 access_result = test_file_access(path_and_file_name)
 
                 if MAX_CONSOLE_OUTPUT: print(f"\tÜberprüfung Zugriff auf aktuelle MSG-Date: {[s.value for s in access_result]}'")  # Debugging-Ausgabe: Console
-                logging.debug(f"\tÜberprüfung Zugriff auf aktuelle MSG-Date: {[s.value for s in access_result]}'")  # Debugging-Ausgabe: Log-File
+                app_logger.debug(f"Überprüfung Zugriff auf aktuelle MSG-Date: {[s.value for s in access_result]}'")  # Debugging-Ausgabe: Log-File
 
                 # Nur wenn die MSG-Datei schreibend geöffnet werden kann, ist ein Umbenennen möglich
                 if FileAccessStatus.WRITABLE in access_result:
                     if MAX_CONSOLE_OUTPUT: print(f"\tSchreibender Zugriff auf die Datei ist möglich.")  # Debugging-Ausgabe: Console
-                    logging.debug(f"\tSchreibender Zugriff auf die Datei ist möglich: {filename}")  # Debugging-Ausgabe: Log-File
+                    app_logger.debug(f"Schreibender Zugriff auf die Datei ist möglich: {filename}")  # Debugging-Ausgabe: Log-File
 
                     # Neuen Dateinamen erzeugen
+                    app_logger.debug(f"Versuche neuen Dateinamen fzu erzeugen.")  # Debugging-Ausgabe: Log-File
                     new_msg_filename_collection = generate_new_msg_filename(path_and_file_name, use_list_of_known_senders=USE_KNOWNSENDER_FILE, file_list_of_known_senders=KNOWNSENDER_FILE, max_console_output=MAX_CONSOLE_OUTPUT)
-
-                    # Wenn Dateiname gekürzt wurde, dann Zähler erhöhen
-                    # if new_msg_filename_collection.is_msg_filename_truncated: msg_file_shorted_name_count += 1
 
                     # Überprüfen, ob new_msg_filename_collection nicht Leer (True) ist
                     if new_msg_filename_collection.new_truncated_msg_filename:
@@ -402,26 +399,23 @@ if __name__ == '__main__':
                             if new_msg_filename_collection.is_msg_filename_truncated:
                                 msg_file_shorted_name_count += 1
                                 if MAX_CONSOLE_OUTPUT: print(f"\tNeuer gekürzter Dateiname: '{new_file_name}'")
-                                logging.debug(f"Neuer gekürzter Dateiname: '{new_file_name}'")  # Debugging-Ausgabe: Log-File
+                                app_logger.debug(f"Neuer gekürzter Dateiname: '{new_file_name}'")  # Debugging-Ausgabe: Log-File
 
                         # Neuen absoluten Pfad erzeugen
                         new_path_and_file_name = os.path.join(pathname, new_file_name)
-                        # Add the \\?\ prefix to support long paths on Windows
-                        #if os.name == 'nt':  # Check if the OS is Windows
-                        #    new_path_and_file_name = f"\\\\?\\{os.path.abspath(new_path_and_file_name)}"
 
                         if MAX_CONSOLE_OUTPUT: print(f"\tNeuer absoluter Pfad: '{new_path_and_file_name}'")
-                        logging.debug(f"Neuer absoluter Pfad: '{new_path_and_file_name}'")  # Debugging-Ausgabe: Log-File
+                        app_logger.debug(f"Neuer absoluter Pfad: '{new_path_and_file_name}'")  # Debugging-Ausgabe: Log-File
 
                         # Pfadlänge ermitteln
                         new_path_and_file_name_length = len(new_path_and_file_name)
                         if MAX_CONSOLE_OUTPUT: print(f"\tPfadlänge neue MSG-Datei: '{new_path_and_file_name_length}'")
-                        logging.debug(f"Pfadlänge neue MSG-Datei: '{new_path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
+                        app_logger.debug(f"Pfadlänge neue MSG-Datei: '{new_path_and_file_name_length}'")  # Debugging-Ausgabe: Log-File
 
-                        # Prüfen, ob Alter und neuer Name gleich, dann keine Änderung erforderlich
+                        # Prüfen, ob Alter und neuer Name gleich sind, dann keine Änderung erforderlich
                         if old_path_and_file_name == new_path_and_file_name:
                             print(f"\tAlter und neuer Dateiname sind gleich.")
-                            logging.debug(f"Alter und neuer Dateiname sind gleich: '{filename}'")  # Debugging-Ausgabe: Log-File
+                            app_logger.debug(f"Alter und neuer Dateiname sind gleich: '{filename}'")  # Debugging-Ausgabe: Log-File
                             msg_file_same_name_count += 1  # Erfolgszähler erhöhen
                             is_msg_file_name_unchanged = True # Kennzeichnung keine Änderung des Dateinamens erforderlich
                             is_msg_file_for_change_date_available = True # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
@@ -429,7 +423,7 @@ if __name__ == '__main__':
                             # Prüfen, ob die Datei mit neuem Namen bereits existiert, also Doublette
                             if os.path.exists(new_path_and_file_name):
                                 print(f"\tDatei ist eine Doublette: '{filename}'")
-                                logging.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                app_logger.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
                                 msg_file_doublette_count += 1  # Erfolgszähler erhöhen
                                 is_msg_file_doublette = True # MSG-Datei mit gleichem neuen Namen existiert bereits - also Doublette
                                 is_msg_file_for_change_date_available = False  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
@@ -440,12 +434,12 @@ if __name__ == '__main__':
                                     try:
                                         os.remove(old_path_and_file_name)  # Versuche, die Datei zu löschen
                                         print(f"\tDoublette gelöscht: '{filename}'")
-                                        logging.debug(f"Doublette gelöscht: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                        app_logger.debug(f"Doublette gelöscht: '{filename}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_doublette_deleted_count += 1  # Löschzähler erhöhen
                                         is_msg_file_doublette_deleted = True
                                     except Exception as e:
                                         print(f"\tDoublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")
-                                        logging.error(f"Doublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")  # Debugging-Ausgabe: Log-File
+                                        app_logger.error(f"Doublette konnte nicht gelöscht werden: '{filename}'. Fehler: {str(e)}")  # Debugging-Ausgabe: Log-File
                                         msg_file_doublette_deleted_problem_count += 1  # Problemzähler erhöhen
                             else:
                                 # Wenn kein Testlauf
@@ -461,17 +455,17 @@ if __name__ == '__main__':
                                     # Zähler und Parameter abhängig von erfolgreicher Umbenennung setzen 
                                     if rename_msg_file_result.SUCCESS:
                                         print(f"\tErfolgreiche Umbenennung der Datei in '{new_file_name}'")
-                                        logging.debug(f"Erfolgreiche Umbenennung der Datei '{filename}' in '{new_file_name}'")  # Debugging-Ausgabe: Log-File
+                                        app_logger.debug(f"Erfolgreiche Umbenennung der Datei '{filename}' in '{new_file_name}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_renamed_count += 1  # Erfolgszähler erhöhen
                                         is_msg_file_for_change_date_available = True  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
                                     elif rename_msg_file_result.DESTINATION_EXISTS:
                                         print(f"\tDatei ist eine Doublette: '{filename}'")
-                                        logging.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
+                                        app_logger.debug(f"Datei ist eine Doublette: '{filename}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_doublette_count += 1  # Erfolgszähler erhöhen
                                         is_msg_file_for_change_date_available = False  # Kennzeichnung für Anpassung Erstellungs- und Änderungsdatum
                                     else:
                                         print(f"\tUmbenennen der Datei fehlgeschlagen: '{rename_msg_file_result}'")
-                                        logging.debug(f"Umbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")  # Debugging-Ausgabe: Log-File
+                                        app_logger.debug(f"Umbenennen der Datei '{filename}' fehlgeschlagen: '{rename_msg_file_result}'")  # Debugging-Ausgabe: Log-File
                                         msg_file_problem_count += 1  # Problemzähler erhöhen
                                         is_msg_file_for_change_date_available = False
 
@@ -502,15 +496,15 @@ if __name__ == '__main__':
                                     msg_file_file_creation_date_count += 1
                                     file_has_new_creation_date = True
                                     if MAX_CONSOLE_OUTPUT: print(f"\tNeues Erstellungsdatum erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
-                                    logging.debug(f"Neues Erstellungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
+                                    app_logger.debug(f"Neues Erstellungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
                                 elif set_creation_result == FileOperationResult.TIMESTAMP_MATCH :
                                     msg_file_creation_date_unchanged_count += 1
                                     if MAX_CONSOLE_OUTPUT: print(f"\tSetzen des Erstellungsdatum nicht erforderlich.")  # Ausgabe des Ergebnisses
-                                    logging.debug(f"Setzen des Erstellungsdatum für '{new_file_name}' nicht erforderlich.")  # Debugging-Ausgabe: Log-File
+                                    app_logger.debug(f"Setzen des Erstellungsdatum für '{new_file_name}' nicht erforderlich.")  # Debugging-Ausgabe: Log-File
                                 else:
                                     msg_file_creation_date_problem_count += 1
                                     if MAX_CONSOLE_OUTPUT: print(f"\tFehler beim Setzen des Erstellungsdatum: '{set_creation_result}'")  # Ausgabe des Ergebnisses
-                                    logging.debug(f"Fehler beim Setzen des Erstellungsdatum für '{new_file_name}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
+                                    app_logger.debug(f"Fehler beim Setzen des Erstellungsdatum für '{new_file_name}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
 
                                 # Setze das Änderungsdatum auf das Versanddatum
                                 set_modification_result = set_file_modification_date(new_path_and_file_name, datetime_stamp_str)
@@ -518,22 +512,22 @@ if __name__ == '__main__':
                                     msg_file_modification_date_count += 1
                                     file_has_new_modification_date = True
                                     if MAX_CONSOLE_OUTPUT: print(f"\tNeues Änderungsdatum erfolgreich gesetzt.")  # Ausgabe des Ergebnisses
-                                    logging.debug(f"Neues Änderungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
+                                    app_logger.debug(f"Neues Änderungsdatum für '{new_file_name}' erfolgreich gesetzt.")  # Debugging-Ausgabe: Log-File
                                 elif set_creation_result == FileOperationResult.TIMESTAMP_MATCH :
                                     msg_file_modification_date_unchanged_count += 1
                                     if MAX_CONSOLE_OUTPUT: print(f"\tSetzen des Änderungsdatum nicht erforderlich.")  # Ausgabe des Ergebnisses
-                                    logging.debug(f"Setzen des Änderungsdatum für '{new_file_name}' nicht erforderlich.")  # Debugging-Ausgabe: Log-File
+                                    app_logger.debug(f"Setzen des Änderungsdatum für '{new_file_name}' nicht erforderlich.")  # Debugging-Ausgabe: Log-File
                                 else:
                                     msg_file_modification_date_problem_count += 1
                                     if MAX_CONSOLE_OUTPUT: print(
                                         f"\tFehler beim Setzen des Änderungsdatum: '{set_creation_result}'")  # Ausgabe des Ergebnisses
-                                    logging.debug(
+                                    app_logger.debug(
                                         f"Fehler beim Setzen des Änderungsdatum für '{new_file_name}': '{set_creation_result}'")  # Debugging-Ausgabe: Log-File
                             else:
                                 msg_file_creation_date_problem_count += 1
                                 msg_file_modification_date_count += 1
                                 if MAX_CONSOLE_OUTPUT: print(f"\tKein Versanddatum der MSG-Datei verfügbar.")  # Ausgabe des Ergebnisses
-                                logging.debug(f"Kein Versanddatum der MSG-Datei verfügbar.")  # Debugging-Ausgabe: Log-File
+                                app_logger.debug(f"Kein Versanddatum der MSG-Datei verfügbar.")  # Debugging-Ausgabe: Log-File
 
                         # Wenn GENERATE_PDF True ist, wird eine PDF-Datei aus der MSG-Datei erstellt
                         if GENERATE_PDF and (not is_msg_file_doublette):
@@ -546,24 +540,24 @@ if __name__ == '__main__':
                             # Wenn der -opdf Flag False ist und die PDF-Datei bereits existiert, wird sie nicht überschrieben
                             if not OVERWRITE_PDF and os.path.exists(pdf_path):
                                 if MAX_CONSOLE_OUTPUT: print(f"\tPDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
-                                logging.info(f"PDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
+                                app_logger.info(f"PDF-Datei '{pdf_path}' existiert bereits und -opdf ist False. Überspringe Erstellung.")
                                 pdf_file_skipped += 1
                                 is_pdf_file_skipped = True
                             else:
                                 generate_pdf_from_msg(new_path_and_file_name, 800)
                                 if MAX_CONSOLE_OUTPUT: print(f"\tPDF-Datei '{pdf_path}' erzeugt.")
-                                logging.info(f"PDF-Datei '{pdf_path}' erzeugt.")
+                                app_logger.info(f"PDF-Datei '{pdf_path}' erzeugt.")
                                 pdf_file_generated += 1
                                 is_pdf_file_generated = True
 
                 elif FileAccessStatus.READABLE in access_result:
                     if MAX_CONSOLE_OUTPUT: print(f"\tNur lesender Zugriff auf die Datei möglich.")
-                    logging.info(f"Nur lesender Zugriff auf die Datei möglich.")
+                    app_logger.info(f"Nur lesender Zugriff auf die Datei möglich.")
                     msg_file_problem_count += 1  # Problemzähler erhöhen
 
                 else:
                     if MAX_CONSOLE_OUTPUT: print(f"\tWeder lesender noch schreibender Zugriff auf die Datei möglich: '{[s.value for s in access_result]}'")
-                    logging.info(f"eder lesender noch schreibender Zugriff auf die Datei möglich: '{[s.value for s in access_result]}'")
+                    app_logger.info(f"Weder lesender noch schreibender Zugriff auf die Datei möglich: '{[s.value for s in access_result]}'")
                     msg_file_problem_count += 1  # Problemzähler erhöhen
 
                 # Logeintrag erstellen
@@ -600,20 +594,36 @@ if __name__ == '__main__':
 
     # Ausgabe der wichtigsten Konfigurationen
     print(f"\nÜbersicht der Konfigurationen:")
+    app_logger.info(f"Übersicht der Konfigurationen:")
     print(f"******************************")
     print(f"Testlauf? {TEST_RUN}")
+    app_logger.info(f"Testlauf? {TEST_RUN}")
     print(f"Testverzeichnis initialisieren? {INIT_TESTDATA}")
+    app_logger.info(f"Testverzeichnis initialisieren? {INIT_TESTDATA}")
     if INIT_TESTDATA: print(f"Pfad zur Quelle der Testdaten: {SOURCE_DIRECTORY_TEST_DATA}")
+    app_logger.info(f"Pfad zur Quelle der Testdaten: {SOURCE_DIRECTORY_TEST_DATA}")
     print(f"Verzeichnis für die Suche nach MSG-Dateien: {TARGET_DIRECTORY}")
+    app_logger.info(f"Verzeichnis für die Suche nach MSG-Dateien: {TARGET_DIRECTORY}")
     print(f"Rekursive Suche? {RECURSIVE_SEARCH}")
+    app_logger.info(f"Rekursive Suche? {RECURSIVE_SEARCH}")
     print(f"Bei Bedarf in der Tabelle der bekannten Email-Absender? {USE_KNOWNSENDER_FILE}")
-    if USE_KNOWNSENDER_FILE: print(f"Pfad zur Datei der bekannten Email-Absender: {KNOWNSENDER_FILE}")
+    app_logger.info(f"Bei Bedarf in der Tabelle der bekannten Email-Absender? {USE_KNOWNSENDER_FILE}")
+    if USE_KNOWNSENDER_FILE:
+        print(f"Pfad zur Datei der bekannten Email-Absender: {KNOWNSENDER_FILE}")
+        app_logger.info(f"Pfad zur Datei der bekannten Email-Absender: {KNOWNSENDER_FILE}")
     print(f"Zeitstempel der MSG-Dateien anpassen? {SET_FILEDATE}")
-    print(f"PDF-Dateien erzeugen? {GENERATE_PDF}")
-    if GENERATE_PDF: print(f"Existierende PDF-Dateien überschreiben? {OVERWRITE_PDF}")
+    app_logger.info(f"Zeitstempel der MSG-Dateien anpassen? {SET_FILEDATE}")
+    if GENERATE_PDF:
+        print(f"PDF-Dateien erzeugen? {GENERATE_PDF}")
+        app_logger.info(f"PDF-Dateien erzeugen? {GENERATE_PDF}")
+        print(f"Existierende PDF-Dateien überschreiben? {OVERWRITE_PDF}")
+        app_logger.info(f"Existierende PDF-Dateien überschreiben? {OVERWRITE_PDF}")
     print(f"Debug-Mode? {DEBUG_MODE}")
+    app_logger.info(f"Debug-Mode? {DEBUG_MODE}")
     print(f"Debug-Datei: {prog_log_file_path}")
+    app_logger.info(f"Debug-Datei: {prog_log_file_path}")
     print(f"Excel-Log-Datei: {excel_log_file_path}")
+    app_logger.info(f"Excel-Log-Datei: {excel_log_file_path}")
 
     # Schreibe Konfiguration
     entry = [
@@ -634,11 +644,16 @@ if __name__ == '__main__':
 
     # Ausgabe der Ergebnisse
     print(f"\nErgebnisse (auch bei Testlauf):")
+    app_logger.info("Ergebnisse (auch bei Testlauf):")
     print(f"*******************************")
     print(f"Anzahl der gefundenen MSG-Dateien: {msg_file_count}")
+    app_logger.info(f"Anzahl der gefundenen MSG-Dateien: {msg_file_count}")
     print(f"Anzahl der bereits mit korrekten Namen existierenden MSG-Dateien: {msg_file_same_name_count}")
+    app_logger.info(f"Anzahl der bereits mit korrekten Namen existierenden MSG-Dateien: {msg_file_same_name_count}")
     print(f"Anzahl der Dateien mit Problemen: {msg_file_problem_count}")
+    app_logger.info(f"Anzahl der Dateien mit Problemen: {msg_file_problem_count}")
     print(f"Anzahl gekürzte Dateinamen: {msg_file_shorted_name_count}")
+    app_logger.info(f"Anzahl gekürzte Dateinamen: {msg_file_shorted_name_count}")
 
     # Schreibe Zusammenfassung Sheet Teil 1
     entry = [
@@ -651,11 +666,16 @@ if __name__ == '__main__':
 
     if not TEST_RUN:
         print(f"\nErgebnisse der Anpassungen:")
+        app_logger.info(f"Ergebnisse der Anpassungen:")
         print(f"***************************")
         print(f"Anzahl der umbenannten Dateien: {msg_file_renamed_count}")
+        app_logger.info(f"Anzahl der umbenannten Dateien: {msg_file_renamed_count}")
         print(f"Anzahl gefundener Doubletten: {msg_file_doublette_count}")
+        app_logger.info(f"Anzahl gefundener Doubletten: {msg_file_doublette_count}")
         print(f"Anzahl gelöschter Doubletten: {msg_file_doublette_deleted_count}")
+        app_logger.info(f"Anzahl gelöschter Doubletten: {msg_file_doublette_deleted_count}")
         print(f"Anzahl nicht gelöschter Doubletten: {msg_file_doublette_deleted_problem_count}")
+        app_logger.info(f"Anzahl nicht gelöschter Doubletten: {msg_file_doublette_deleted_problem_count}")
 
         # Schreibe Zusammenfassung Sheet Teil 2
         entry = [
@@ -668,13 +688,20 @@ if __name__ == '__main__':
 
         if SET_FILEDATE:
             print(f"\nErgebnisse bei Anpassung File-Datum:")
+            app_logger.info(f"Ergebnisse bei Anpassung File-Datum:")
             print(f"************************************")
             print(f"Anzahl MSG-Dateien mit geändertem Erstellungsdatum: {msg_file_file_creation_date_count}")
+            app_logger.info(f"Anzahl MSG-Dateien mit geändertem Erstellungsdatum: {msg_file_file_creation_date_count}")
             print(f"Anzahl MSG-Dateien mit nicht geändertem Erstellungsdatum: {msg_file_creation_date_unchanged_count}")
+            app_logger.info(f"Anzahl MSG-Dateien mit nicht geändertem Erstellungsdatum: {msg_file_creation_date_unchanged_count}")
             print(f"Anzahl MSG-Dateien wo Anpassung Erstellungsdatum nicht möglich: {msg_file_creation_date_problem_count}")
+            app_logger.info(f"Anzahl MSG-Dateien wo Anpassung Erstellungsdatum nicht möglich: {msg_file_creation_date_problem_count}")
             print(f"Anzahl MSG-Dateien mit geändertem Änderungsdatum: {msg_file_modification_date_count}")
+            app_logger.info(f"Anzahl MSG-Dateien mit geändertem Änderungsdatum: {msg_file_modification_date_count}")
             print(f"Anzahl MSG-Dateien mit nicht geändertem Änderungsdatum: {msg_file_modification_date_unchanged_count}")
+            app_logger.info(f"Anzahl MSG-Dateien mit nicht geändertem Änderungsdatum: {msg_file_modification_date_unchanged_count}")
             print(f"Anzahl MSG-Dateien wo Anpassung Änderungsdatum nicht möglich: {msg_file_modification_date_problem_count}")
+            app_logger.info(f"Anzahl MSG-Dateien wo Anpassung Änderungsdatum nicht möglich: {msg_file_modification_date_problem_count}")
 
             # Schreibe Zusammenfassung Sheet Teil 3
             entry = [
@@ -689,9 +716,12 @@ if __name__ == '__main__':
 
         if GENERATE_PDF:
             print(f"\nErgebnis der PDF-Erzeugung:")
+            app_logger.info(f"Ergebnis der PDF-Erzeugung:")
             print(f"****************************")
             print(f"Anzahl der erzeugten PDF-Dateien: {pdf_file_generated}")
+            app_logger.info(f"Anzahl der erzeugten PDF-Dateien: {pdf_file_generated}")
             print(f"Anzahl der übersprungenen PDF-Dateien: {pdf_file_skipped}")
+            app_logger.info(f"Anzahl der übersprungenen PDF-Dateien: {pdf_file_skipped}")
 
             # Schreibe Zusammenfassung Sheet Teil 4
             entry = [
@@ -700,4 +730,3 @@ if __name__ == '__main__':
             ]
             log_entry_neu(excel_log_file_path, entry, sheet_name="Zusammenfassung")
 
-    logging.shutdown()

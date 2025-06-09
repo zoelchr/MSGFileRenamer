@@ -21,6 +21,11 @@ python msg_directory_scanner.py -l
 import os
 import sys
 from utils.excel_handling import create_excel_list, save_excel_file
+from logger import initialize_logger
+
+# In der Log-Datei wird als Quelle der Modulname "__main__" verwendet
+app_logger = initialize_logger(__name__)
+app_logger.debug("Debug-Logging im Modul 'msg_directory_scanner' gestartet.")
 
 def get_msg_files_from_directory(directory):
     """

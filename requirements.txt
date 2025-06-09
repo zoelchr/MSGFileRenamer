@@ -17,3 +17,5 @@ openpyxl>=3.1.5
 
 # Für die Erstellung von PDF-Dateien mit Unicode-Unterstützung
 fpdf2>=2.3.3
+
+dotenv

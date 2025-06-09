@@ -12,6 +12,11 @@ Funktionen:
 
 import os
 from utils.file_handling import delete_directory_contents, copy_directory_contents
+from logger import initialize_logger
+
+# In der Log-Datei wird als Quelle der Modulname "__main__" verwendet
+app_logger = initialize_logger(__name__)
+app_logger.debug("Debug-Logging im Modul 'msg_to_pdf' aktiviert.")
 
 def prepare_test_directory(source_dir, target_dir):
     """

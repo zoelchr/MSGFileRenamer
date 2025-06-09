@@ -25,16 +25,18 @@ Beispiel:
     from modules.msg_handling import get_msg_object
     msg_data = get_msg_object('example.msg')
 """
-
 import extract_msg
 import re
 import os
 import pandas as pd
 from datetime import datetime
-import logging
 from enum import Enum
+from config import MAX_EXCEL_LOG_FILE_COUNT
+from logger import initialize_logger
 
-logger = logging.getLogger(__name__)
+# In der Log-Datei wird als Quelle der Modulname "__main__" verwendet
+app_logger = initialize_logger(__name__)
+app_logger.debug("Debug-Logging im Modul 'msg_handling' aktiviert.")
 
 class MsgAccessStatus(Enum):
     SUCCESS = "Success"
@@ -100,7 +102,7 @@ def get_msg_object(msg_file: str) -> dict:
     }
 
     try:
-        logger.debug(f"Öffne MSG-Datei: {msg_file}")  # Debugging-Ausgabe
+        app_logger.debug(f"Öffne MSG-Datei: {msg_file}")  # Debugging-Ausgabe
 
         # Sicherstellen, dass die Datei mit `with` geöffnet und automatisch geschlossen wird
         with extract_msg.Message(msg_file) as msg_object:
@@ -108,7 +110,7 @@ def get_msg_object(msg_file: str) -> dict:
             # Überprüfen, ob das MSG-Objekt erfolgreich erstellt wurde
             if msg_object is None:
                 msg_data["status"].append(MsgAccessStatus.DATA_NOT_FOUND)
-                logger.error(f"MSG-Datei konnte nicht verarbeitet werden: {msg_file}")
+                app_logger.error(f"MSG-Datei konnte nicht verarbeitet werden: {msg_file}")
                 return msg_data  # Sofort zurückgeben
 
             # Jedes Attribut separat absichern
@@ -116,57 +118,76 @@ def get_msg_object(msg_file: str) -> dict:
                 if msg_object.subject:
                     msg_data["subject"] = msg_object.subject
                     msg_data["status"] = [MsgAccessStatus.SUCCESS]  # Setze SUCCESS, wenn Betreff erfolgreich extrahiert
+                    app_logger.debug(f"'subject' aus der MSG-Datei erfolgreich extrahiert: {msg_data['subject']}")  # Debugging-Ausgabe
                 else:
                     msg_data["status"].append(MsgAccessStatus.SUBJECT_MISSING)
+                    app_logger.warning(f"'subject' konnte nicht aus der MSG-Datei extrahiert werden.")
             except AttributeError:
                 msg_data["status"].append(MsgAccessStatus.ATTRIBUTE_ERROR)
+                app_logger.warning(f"Fehler bei der Extraktion von 'subject' aus der MSG-Datei.")
 
             try:
                 if msg_object.sender:
                     msg_data["sender"] = msg_object.sender
                     msg_data["status"] = [MsgAccessStatus.SUCCESS]  # Setze SUCCESS, wenn Sender erfolgreich extrahiert
+                    app_logger.debug(f"'sender' aus der MSG-Datei erfolgreich extrahiert: {msg_data['sender']}")  # Debugging-Ausgabe
                 else:
                     msg_data["status"].append(MsgAccessStatus.SENDER_MISSING)
+                    app_logger.warning(f"'sender' konnte nicht aus der MSG-Datei extrahiert werden.")
             except AttributeError:
                 msg_data["status"].append(MsgAccessStatus.ATTRIBUTE_ERROR)
+                app_logger.warning(f"Fehler bei der Extraktion von 'sender' aus der MSG-Datei.")
 
             try:
                 if msg_object.recipients:
                     msg_data["recipient"] = msg_object.to
                     msg_data["status"] = [MsgAccessStatus.SUCCESS]  # Setze SUCCESS, wenn Sender erfolgreich extrahiert
+                    app_logger.debug(f"'recipient' aus der MSG-Datei erfolgreich extrahiert: {msg_data['recipient']}")  # Debugging-Ausgabe
                 else:
                     msg_data["status"].append(MsgAccessStatus.NO_RECIPIENT_FOUND)
+                    app_logger.warning(f"'recipient' konnte nicht aus der MSG-Datei extrahiert werden.")
             except AttributeError:
                 msg_data["status"].append(MsgAccessStatus.ATTRIBUTE_ERROR)
+                app_logger.warning(f"Fehler bei der Extraktion von 'recipient' aus der MSG-Datei.")
 
             try:
                 if msg_object.date:
                     msg_data["date"] = msg_object.date
                     msg_data["status"] = [MsgAccessStatus.SUCCESS]  # Setze SUCCESS, wenn Datum erfolgreich extrahiert
+                    app_logger.debug(f"'date' aus der MSG-Datei erfolgreich extrahiert: {msg_data['date']}")  # Debugging-Ausgabe
                 else:
                     msg_data["status"].append(MsgAccessStatus.DATE_MISSING)
+                    app_logger.warning(f"'date' konnte nicht aus der MSG-Datei extrahiert werden.")
             except AttributeError:
                 msg_data["status"].append(MsgAccessStatus.ATTRIBUTE_ERROR)
+                app_logger.warning(f"Fehler bei der Extraktion von 'date' aus der MSG-Datei.")
 
             try:
                 if msg_object.body:
                     msg_data["body"] = msg_object.body
                     msg_data["status"] = [MsgAccessStatus.SUCCESS]  # Setze SUCCESS, wenn Body erfolgreich extrahiert
+                    app_logger.debug(f"'body' aus der MSG-Datei erfolgreich extrahiert mit Anzahl Zeichen: {len(msg_data['body'])}")  # Debugging-Ausgabe {msg_data}")  # Debugging-Ausgabe
                 else:
                     msg_data["status"].append(MsgAccessStatus.BODY_MISSING)
+                    app_logger.warning(f"'body' konnte nicht aus der MSG-Datei extrahiert werden.")
             except UnicodeDecodeError:
                 msg_data["status"].append(MsgAccessStatus.UNICODE_DECODE_ERROR)
+                app_logger.warning(f"Fehler 'UnicodeDecodeError' bei der Extraktion von 'body' aus der MSG-Datei.")
             except UnicodeEncodeError:
                 msg_data["status"].append(MsgAccessStatus.UNICODE_ENCODE_ERROR)
+                app_logger.warning(f"Fehler 'UnicodeEncodeError' bei der Extraktion von 'body' aus der MSG-Datei.")
 
             try:
                 if msg_object.attachments:
                     msg_data["attachments"] = [att.longFilename or att.shortFilename or "unbenannt" for att in msg_object.attachments]
                     #msg_data["attachments"] = msg_object.attachments
+                    app_logger.debug(f"'attachments' aus der MSG-Datei erfolgreich extrahiert mit Anzahl Zeichen: {len(msg_data['attachments'])}")
                 else:
                     msg_data["status"].append(MsgAccessStatus.ATTACHMENTS_MISSING)
+                    app_logger.warning(f"'attachments' konnte nicht aus der MSG-Datei extrahiert werden bzw. keine vorhanden.")
             except AttributeError:
                 msg_data["status"].append(MsgAccessStatus.ATTRIBUTE_ERROR)
+                app_logger.warning(f"Fehler bei der Extraktion von 'attachments' aus der MSG-Datei.")
 
             # Zusätzliche Informationen extrahieren
             msg_data["signed"] = hasattr(msg_object, 'signed') and msg_object.signed
@@ -174,27 +195,27 @@ def get_msg_object(msg_file: str) -> dict:
             msg_data["reply_count"] = getattr(msg_object, 'reply_count', 0)
             msg_data["has_defects"] = hasattr(msg_object, 'has_defects') and msg_object.has_defects
 
-        logger.debug(f"MSG-Daten erfolgreich extrahiert: {msg_data}")  # Debugging-Ausgabe
+        app_logger.debug(f"Extraktion Daten aus MSG-Datei abgeschlossen.")  # Debugging-Ausgabe
 
     except FileNotFoundError:
         msg_data["status"] = [MsgAccessStatus.FILE_NOT_FOUND]
-        logger.error(f"MSG-Datei nicht gefunden: {msg_file}")
+        app_logger.error(f"MSG-Datei nicht gefunden: {msg_file}")
 
     except PermissionError:
         msg_data["status"] = [MsgAccessStatus.PERMISSION_ERROR]
-        logger.error(f"Keine Berechtigung, um die MSG-Datei zu öffnen: {msg_file}")
+        app_logger.error(f"Keine Berechtigung, um die MSG-Datei zu öffnen: {msg_file}")
 
     except TypeError:
         msg_data["status"] = [MsgAccessStatus.TYPE_ERROR]
-        logger.error(f"Falscher Datentyp in MSG-Datei: {msg_file}")
+        app_logger.error(f"Falscher Datentyp in MSG-Datei: {msg_file}")
 
     except ValueError:
         msg_data["status"] = [MsgAccessStatus.VALUE_ERROR]
-        logger.error(f"Ungültiger Wert in MSG-Datei: {msg_file}")
+        app_logger.error(f"Ungültiger Wert in MSG-Datei: {msg_file}")
 
     except Exception as e:
         msg_data["status"] = [MsgAccessStatus.OTHER_ERROR]
-        logger.error(f"Allgemeiner Fehler beim Öffnen der MSG-Datei: {str(e)}")
+        app_logger.error(f"Allgemeiner Fehler beim Öffnen der MSG-Datei: {str(e)}")
 
     return msg_data
 
@@ -219,10 +240,10 @@ def create_log_file(base_name, directory, table_header):
 
     try:
         df.to_excel(log_file_path, index=False)
-        logger.debug(f"Logging Excel-Datei erfolgreich erstellt: {log_file_path}")  # Debugging-Ausgabe: Log-File
+        app_logger.debug(f"Logging Excel-Datei erfolgreich erstellt: {log_file_path}")  # Debugging-Ausgabe: Log-File
         return log_file_path
     except Exception as e:
-        logger.error(f"Fehler beim Erstellen der Logdatei: {e}")  # Debugging-Ausgabe: Log-File
+        app_logger.error(f"Fehler beim Erstellen der Logdatei: {e}")  # Debugging-Ausgabe: Log-File
         raise OSError(f"Fehler beim Erstellen der Logdatei: {e}")
 
 def create_log_file_neu(base_name, directory, table_header, sheet_name="Log"):
@@ -238,20 +259,20 @@ def create_log_file_neu(base_name, directory, table_header, sheet_name="Log"):
     Rückgabewert:
     str: Der Pfad zur erstellten Logdatei.
     """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file_name = f"{base_name}_{timestamp}.xlsx"
-    log_file_path = os.path.join(directory, log_file_name)
+    current_time = datetime.now()
+    excel_log_file_name = current_time.strftime("excel_log_file_%Y-%m-%d_%HUhr%M_%Ss.xlsx")
+    excel_log_file_path = os.path.join(directory, excel_log_file_name)
 
     # Leeres DataFrame mit Header erstellen
     df = pd.DataFrame(columns=table_header)
 
     try:
-        with pd.ExcelWriter(log_file_path, engine="openpyxl", mode="w") as writer:
+        with pd.ExcelWriter(excel_log_file_path, engine="openpyxl", mode="w") as writer:
             df.to_excel(writer, sheet_name=sheet_name, index=False)
-        logger.debug(f"Logging Excel-Datei erfolgreich erstellt: {log_file_path}")
-        return log_file_path
+        app_logger.debug(f"Logging Excel-Datei erfolgreich erstellt: {excel_log_file_path}")
+        return excel_log_file_path
     except Exception as e:
-        logger.error(f"Fehler beim Erstellen der Logdatei: {e}")
+        app_logger.error(f"Fehler beim Erstellen der Logdatei: {e}")
         raise OSError(f"Fehler beim Erstellen der Logdatei: {e}")
 
 def log_entry(log_file_path, entry):
@@ -354,15 +375,15 @@ def convert_to_utc_naive(datetime_stamp):
     try:
         if datetime_stamp.tzinfo is not None:
             new_datetime_stamp = datetime_stamp.replace(tzinfo=None)
-            logger.debug(f"Konvertierter Zeitstempel in ein UTC-naives Datetime-Objekt: {new_datetime_stamp}")  # Debugging-Ausgabe: Log-File
+            app_logger.debug(f"Konvertierter Zeitstempel in ein UTC-naives Datetime-Objekt: {new_datetime_stamp}")  # Debugging-Ausgabe: Log-File
             return datetime_stamp.replace(tzinfo=None)  # Entfernen der Zeitzone
 
-        logger.error(f"Kein Zeitstempel zum Konvertieren vorhanden.")  # Debugging-Ausgabe: Log-File
+        app_logger.error(f"Kein Zeitstempel zum Konvertieren vorhanden.")  # Debugging-Ausgabe: Log-File
         return datetime_stamp
 
     except Exception as e:
         print(f"Fehler beim Konvertieren des Zeitstempels: {str(e)}") # Debugging-Ausgabe: Console
-        logger.error(f"Fehler beim Konvertieren des Zeitstempels: {str(e)}") # Debugging-Ausgabe: Log-File
+        app_logger.error(f"Fehler beim Konvertieren des Zeitstempels: {str(e)}") # Debugging-Ausgabe: Log-File
         return datetime_stamp
 
 
@@ -381,11 +402,11 @@ def format_datetime(datetime_stamp, format_string):
         formatted_time = format_datetime(datetime.now(), "%Y-%m-%d %H:%M:%S")
     """
     if datetime_stamp is None:
-        logger.error(f"Der Zeitstempel darf nicht None sein.")  # Debugging-Ausgabe: Log-File
+        app_logger.error(f"Der Zeitstempel darf nicht None sein.")  # Debugging-Ausgabe: Log-File
         raise ValueError("Der Zeitstempel darf nicht None sein.")
 
     if not isinstance(datetime_stamp, datetime):
-        logger.error(f"Ungültiger Zeitstempel: erwartet datetime, erhalten {type(datetime_stamp).__name__}.")  # Debugging-Ausgabe: Log-File
+        app_logger.error(f"Ungültiger Zeitstempel: erwartet datetime, erhalten {type(datetime_stamp).__name__}.")  # Debugging-Ausgabe: Log-File
         raise ValueError(f"Ungültiger Zeitstempel: erwartet datetime, erhalten {type(datetime_stamp).__name__}.")
 
     return datetime_stamp.strftime(format_string)
@@ -488,15 +509,15 @@ def truncate_filename_if_needed(file_path, max_length, truncation_marker):
         truncated_path = truncate_filename_if_needed("D:/Dev/pycharm/MSGFileRenamer/modules/very_long_filename_that_exceeds_the_limit.txt", 50, "...")
     """
     if file_path is None:
-        logger.error(f"file_path darf nicht None sein.")  # Debugging-Ausgabe: Log-File
+        app_logger.error(f"file_path darf nicht None sein.")  # Debugging-Ausgabe: Log-File
         raise ValueError("file_path darf nicht None sein.")
 
     if not isinstance(max_length, int) or max_length <= 0:
-        logger.error(f"max_length muss eine positive Ganzzahl sein.")  # Debugging-Ausgabe: Log-File
+        app_logger.error(f"max_length muss eine positive Ganzzahl sein.")  # Debugging-Ausgabe: Log-File
         raise ValueError("max_length muss eine positive Ganzzahl sein.")
 
     if not truncation_marker:
-        logger.error(f"truncation_marker darf nicht leer sein.")  # Debugging-Ausgabe: Log-File
+        app_logger.error(f"truncation_marker darf nicht leer sein.")  # Debugging-Ausgabe: Log-File
         raise ValueError("truncation_marker darf nicht leer sein.")
 
     if len(file_path) > max_length:
@@ -532,11 +553,11 @@ def parse_sender_msg_file(msg_absender_str: str) -> dict:
     if email_match:
         sender_email = email_match.group(1)
         contains_sender_email = True
-        logger.debug(f"Im Absender der MSG-Datei ist folgende Email enthalten: {sender_email}")  # Debugging-Ausgabe: Log-File
+        app_logger.debug(f"Im Absender der MSG-Datei ist folgende Email enthalten: {sender_email}")  # Debugging-Ausgabe: Log-File
     else:
         sender_email = ""
         contains_sender_email = False
-        logger.debug(f"Im Absender der MSG-Datei ist keine Email enthalten: {msg_absender_str}")  # Debugging-Ausgabe: Log-File
+        app_logger.debug(f"Im Absender der MSG-Datei ist keine Email enthalten: {msg_absender_str}")  # Debugging-Ausgabe: Log-File
 
     # Entferne die E-Mail-Adresse aus dem Sender-String
     sender_name = re.sub(email_pattern, '', msg_absender_str).strip()
