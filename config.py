@@ -29,7 +29,7 @@ MAX_EXCEL_LOG_FILE_COUNT = int(os.getenv("MAX_EXCEL_LOG_FILE_COUNT", "10"))
 # Konsolen-Logging zusätzlich aktivieren
 LOG_TO_CONSOLE = os.getenv("LOG_TO_CONSOLE", "false").lower() == "true"
 
-LIST_OF_KNOWN_SENDERS = os.getenv("KNOWNSENDER_FILE", "./known_senders_private.csv")
+ENV_LIST_OF_KNOWN_SENDERS = os.getenv("KNOWNSENDER_FILE", "./known_senders.csv")
 
 # Testmodus (kein Email-Export)
 TEST_MODE = os.getenv("TEST_MODE", "false").lower() in ["true", "1", "yes", "y"]

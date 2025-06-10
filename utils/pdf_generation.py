@@ -23,13 +23,16 @@ Abhängigkeiten:
 
 import os
 import re
+import unicodedata
 from fpdf import FPDF
 from modules.msg_handling import MsgAccessStatus, get_msg_object
 
 from logger import initialize_logger
-# In der Log-Datei wird als Quelle der Modulname "__main__" verwendet
 app_logger = initialize_logger(__name__)
 app_logger.debug("Debug-Logging im Modul 'msg_to_pdf' aktiviert.")
+
+ALLOWED_CONTROL_CHARACTERS = ['\n', '\t', '\r', '\f', '\v']
+
 
 def clean_email_text(text):
     """
@@ -43,11 +46,8 @@ def clean_email_text(text):
     import html
     text = html.unescape(text)
 
-    # 2. Tabulator entfernen
-    text = text.replace('\t', ' ')
-
-    # 3. Kompaktere Lösung für alle Fälle
-    # text = re.sub(r'(\r\n\s*){3,}', '\n\n', text)
+    # 2. Tabulator durch Leerzeichen
+    text = text.replace('\t', '    ')
 
     # 3a. Mehrfache Leerzeilen Fall 1
     text = re.sub('\r\n\r\n \r\n\r\n \r\n\r\n  \r\n\r\n  \r\n\r\n', '\n\n\n', text)
@@ -91,7 +91,23 @@ def clean_email_text(text):
     # 8. Spezialfall für eine spezifische E-Mail-Adresse
     text = re.sub(rf'E-Mail: ruediger.zoelch@lgl.bayern.de <mailto:ruediger.zoelch@lgl.bayern.de>', rf"E-Mail: ruediger.zoelch@lgl.bayern.de <mailto:ruediger.zoelch@lgl.bayern.de>\n", text)
 
+    # 9. Spezielle Zeichen ersetzen, z.B. Emojis
+    text = text.replace("\U0001f60a", ":)")
+    text = text.replace("\U0001f603", ":)")
+    text = text.replace("\U0001f614", ":)")
+    text = text.replace("\U0001f622", ":)")
+
     return text.strip()
+
+
+def remove_unsupported_chars(text):
+    """
+    Entfernt ungültige Zeichen und erlaubt nur explizit definierte Steuerzeichen.
+    """
+    return ''.join(
+        c for c in text
+        if c in ALLOWED_CONTROL_CHARACTERS or c.isprintable()
+    )
 
 
 def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int):
@@ -111,45 +127,65 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
     pdf = FPDF()
     pdf.add_page()
 
+    # Schriftart NotoSans Regular laden
+    pdf.add_font("NotoSans", style="", fname="./font/NotoSans-Regular.ttf", uni=True)
+
+    # Schriftart NotoSans Bold laden
+    pdf.add_font("NotoSans", style="B", fname="./font/NotoSans-Bold.ttf", uni=True)
+
     # Segoe UI TTF von Windows einbinden (Unicode-fähig)
-    pdf.add_font("Segoe", "", "C:\\Windows\\Fonts\\segoeui.ttf", uni=True)
-    pdf.add_font("Segoeb", "", "C:\\Windows\\Fonts\\segoeuib.ttf", uni=True)
+    # pdf.add_font("Segoe", "", "C:\\Windows\\Fonts\\segoeui.ttf", uni=True)
+    # pdf.add_font("Segoeb", "", "C:\\Windows\\Fonts\\segoeuib.ttf", uni=True)
 
-
-    pdf.set_font("Segoe", size=5)
+    pdf.set_font("NotoSans", size=4)
     pdf.write(5, f"Dieser PDF-Ausdruck der Email ist eventuell gekürzt (max 6000 Zeichen). Zusätzlich können Beeinträchtigungen bei der Formatierung auftreten, z.B. Darstellung von Tabellen. Die vollständige Email findet sich in der zugehörigen MSG-Datei.\n")
-    pdf.set_font("Segoe", size=8)
+    pdf.set_font("NotoSans", size=8)
 
-    # Überprüfen, ob der Pfad zu einer existierenden Datei führt
+    # Schritt 1: Überprüfen, ob der Pfad zu einer existierenden Datei führt
+    msg_object = {"status": [MsgAccessStatus.FILE_NOT_FOUND]} # Vorbelegung der Rückgabewerte, auch wenn kein msg_object erzeugt werden kann
     if os.path.isfile(msg_path_and_filename):
         app_logger.debug(f"Schritt 1: Die Datei '{msg_path_and_filename}' existiert.")  # Debugging-Ausgabe: Log-File
 
-        # PDF-Dateiname festlegen
+        # Schritt 2: PDF-Dateiname festlegen
         pdf_path_and_filename = os.path.splitext(msg_path_and_filename)[0] + ".pdf"
         app_logger.debug(f"Schritt 2: Dateiname für PDF-Dokument '{pdf_path_and_filename}'.")  # Debugging-Ausgabe: Log-File
 
-        # Auslesen des msg-Objektes
-        msg_object = get_msg_object(msg_path_and_filename)
+        # Schritt 3: Auslesen des msg-Objektes und bei Fehler abbrechen
+        try:
+            msg_object = get_msg_object(msg_path_and_filename)
+        except Exception as e:
+            app_logger.warning(f"Schritt 3: Fehler bei der PDF-Erstellung da kein Zugriff auf msg_object: {e}")
+            is_generate_pdf_successful = False
+            return is_generate_pdf_successful, pdf_path_and_filename
 
-        # Zeitstempel ausgeben
+        # Schritt 4: Zeitstempel ausgeben
         if not MsgAccessStatus.DATE_MISSING in msg_object["status"]:
             msg_date = msg_object["date"]
+            app_logger.debug(f"Schritt 4: Zeitstempel für PDF-Ausgabe '{msg_date}'.")  # Debugging-Ausgabe: Log-File
 
-            #pdf.set_font("Segoe", style="B", size=8)
-            pdf.set_font("Segoeb", size=8)
-            pdf.write(5, f"Versandzeitpunkt: ")
-            pdf.set_font("Segoe", size=8)
-            pdf.write(5, f"{msg_date}\n")
+            try:
+                pdf.set_font("NotoSans", style="B", size=8)
+                pdf.write(5, f"Versandzeitpunkt: ")
+                pdf.set_font("NotoSans", size=8)
+                pdf.write(5, f"{msg_date}\n")
+            except Exception as e:
+                app_logger.warning(f"Schritt 4: Fehler bei der PDF-Erstellung: {e}")
 
-        # Sender ausgeben
+        # Schritt 5: Sender ausgeben
         if not MsgAccessStatus.SENDER_MISSING in msg_object["status"]:
             msg_sender = msg_object["sender"]
-            pdf.set_font("Segoeb", size=8)
-            pdf.write(5, f"Absender: ")
-            pdf.set_font("Segoe", size=8)
-            pdf.write(5, f"{msg_sender}\n")
+            msg_sender = remove_unsupported_chars(msg_sender)
+            app_logger.debug(f"Schritt 5: Sender für PDF-Ausgabe '{msg_sender}'.")  # Debugging-Ausgabe: Log-File
 
-        # Empfänger ausgeben
+            try:
+                pdf.set_font("NotoSans", style="B", size=8)
+                pdf.write(5, f"Absender: ")
+                pdf.set_font("NotoSans", size=8)
+                pdf.write(5, f"{msg_sender}\n")
+            except Exception as e:
+                app_logger.warning(f"Schritt 5: Fehler bei der PDF-Erstellung: {e}")
+
+        # Schritt 6: Empfänger ausgeben
         if not MsgAccessStatus.NO_RECIPIENT_FOUND in msg_object["status"]:
             msg_recipient = msg_object["recipient"]
 
@@ -161,54 +197,70 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
             if len(email_list) > MAX_LENGTH_SENDERLIST:
                 email_list = email_list[:MAX_LENGTH_SENDERLIST] + '<GEKÜRZT>'
 
-            pdf.set_font("Segoeb", size=8)
-            pdf.write(5, f"Empfänger: ")
-            pdf.set_font("Segoe", size=8)
-            pdf.write(5, f"{email_list}\n")
+            # Remove unsupported characters
+            cleaned_text = remove_unsupported_chars(email_list)
 
-        # Betreff ausgeben
+            try:
+                pdf.set_font("NotoSans", style="B", size=8)
+                pdf.write(5, f"Empfänger: ")
+                pdf.set_font("NotoSans", size=8)
+                pdf.write(5, f"{cleaned_text}\n")
+            except Exception as e:
+                app_logger.warning(f"Schritt 6: Fehler bei der PDF-Erstellung: {e}")
+
+        # Schritt 7: Betreff ausgeben
         if not MsgAccessStatus.SUBJECT_MISSING in msg_object["status"]:
-            msg_subject = msg_object["subject"]
-            # PDF-Inhalt hinzufügen
-            pdf.set_font("Segoeb", size=8)
-            pdf.write(5, f"Betreff: ")
-            pdf.set_font("Segoe", size=8)
-            pdf.write(5, f"{msg_subject}\n")
+            cleaned_text = msg_object["subject"]
+            cleaned_text = remove_unsupported_chars(cleaned_text)
+            app_logger.debug(f"Schritt 7: Betreff für PDF-Ausgabe '{cleaned_text}'.")  # Debugging-Ausgabe: Log-File
 
-        # Inhalt ausgeben
+            # PDF-Inhalt hinzufügen
+            try:
+                pdf.set_font("NotoSans", style="B", size=8)
+                pdf.write(5, f"Betreff: ")
+                pdf.set_font("NotoSans", size=8)
+                pdf.write(5, f"{cleaned_text}\n")
+            except Exception as e:
+                app_logger.warning(f"Schritt 7:  Fehler bei der PDF-Erstellung: {e}")
+
+        # Schritt 8: Inhalt ausgeben
         if not MsgAccessStatus.BODY_MISSING in msg_object["status"]:
             msg_body = msg_object["body"]
 
             # Truncate the body if it exceeds certain number of characters
             MAX_BODY_LENGTH = 6000
             if len(msg_body) > MAX_BODY_LENGTH:
-                pdf.set_font("Segoeb", size=8)
+                pdf.set_font("NotoSans", size=8)
                 msg_body = msg_body[:MAX_BODY_LENGTH] + '\n<HINWEIS: NACHRICHT WURDE AUF 6000 ZEICHEN GEKÜRZT! VOLLSTÄNDIGE NACHRICHT SIEHE GLEICHNAMIGES MSG-FILE>'
 
             # Body ausgeben
-            pdf.set_font("Segoeb", size=10)
+            pdf.set_font("NotoSans", style="B", size=10)
             pdf.write(5, f"\nInhalt:\n")
-            pdf.set_font("Segoe", size=8)
+            pdf.set_font("NotoSans", size=8)
 
             # Text bereinigen, damit kompakte Darstellung möglich
             cleaned_text = clean_email_text(msg_body)  # <- dein ausgelesener Text
-            app_logger.debug(f"Body-Text wurde bereinigt und besitzt nach Kürzung eine Länge von {len(cleaned_text)}")  # Debugging-Ausgabe: Log-File
+            cleaned_text = remove_unsupported_chars(cleaned_text)
+            app_logger.debug(f"Schritt 8: Body-Text wurde bereinigt und besitzt nach Kürzung eine Länge von {len(cleaned_text)}")  # Debugging-Ausgabe: Log-File
 
             # Text ausgeben
-            pdf.write(5, f"{cleaned_text}")
+            try:
+                pdf.write(5, f"{cleaned_text}")
+            except Exception as e:
+                app_logger.warning(f"Schritt 8:  Fehler bei der PDF-Erstellung: {e}")
 
         else:
-            pdf.set_font("Segoeb", size=10)
+            pdf.set_font("NotoSans", style="B", size=10)
             pdf.write(5, f"\nInhalt:\n")
-            pdf.set_font("Segoe", size=8)
+            pdf.set_font("NotoSans", size=8)
             pdf.write(5, f"\nHINWEIS: NACHRICHT OHNE INHALT ODER KANN NICHT GELESEN WERDEN (z.B. SIGNATURPRÜFUNG)!")
 
-        # Anhänge ausgeben
+        # Schritt 9: Anhänge ausgeben
         if not MsgAccessStatus.ATTACHMENTS_MISSING in msg_object["status"]:
             msg_attachments = msg_object["attachments"]
-            pdf.set_font("Segoeb", size=8)
+            pdf.set_font("NotoSans", style="B", size=8)
             pdf.write(5, f"\n\nAnhänge:\n")
-            pdf.set_font("Segoe", size=8)
+            pdf.set_font("NotoSans", size=8)
 
             for filename in msg_object["attachments"]:
                pdf.write(5, f"- {filename}\n")
@@ -221,7 +273,8 @@ def generate_pdf_from_msg(msg_path_and_filename:str, MAX_LENGTH_SENDERLIST: int)
         app_logger.debug(f"\tDie PDF wurde unter '{os.path.abspath(pdf_path_and_filename)}' gespeichert.")
 
     else:
-        print(f"\tDie MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden. Status: {msg_object['status']}")
-        app_logger.debug(f"Die MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden. Status: {msg_object['status']}")
+        #print(f"\tDie MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden.")
+        app_logger.warning(f"Die MSG-Datei '{msg_path_and_filename}' konnte nicht gelesen werden.")
+        is_generate_pdf_successful = False
 
     return is_generate_pdf_successful, pdf_path_and_filename

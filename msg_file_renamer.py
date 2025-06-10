@@ -125,7 +125,7 @@ from modules.msg_handling import log_entry_neu, create_log_file_neu
 from utils.excel_handling import clean_old_excel_files
 from utils.testset_preparation import prepare_test_directory
 from utils.pdf_generation import generate_pdf_from_msg
-from config import SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA, MAX_PATH_LENGTH, DEBUG_LEVEL, LOG_FILE_DIRECTORY, MAX_EXCEL_LOG_FILE_COUNT
+from config import SOURCE_DIRECTORY_TEST_DATA, TARGET_DIRECTORY_TEST_DATA, MAX_PATH_LENGTH, DEBUG_LEVEL, LOG_FILE_DIRECTORY, MAX_EXCEL_LOG_FILE_COUNT, ENV_LIST_OF_KNOWN_SENDERS
 
 #import optimierter Logger
 from logger import initialize_logger, clean_logs_and_initialize, DEBUG_LEVEL_TEXT, prog_log_file_path
@@ -207,7 +207,7 @@ if __name__ == '__main__':
     parser.add_argument("-opdf", "--overwrite_pdf", default=False, action="store_true", help="True/False für Überschreiben eines bereits existierende PDF-Files aus MSG-Dateien (Default=False)")
     parser.add_argument("-rs", "--recursive_search", default=False, action="store_true", help="True/False für die rekursive Suche nach MSG-Dateien (Default=False)"),
     parser.add_argument("-ucf", "--use_knownsender_file", default=False, action="store_true", help="True/False für die Nutzung des Config-Files (Default=False)"),
-    parser.add_argument("-cf", "--knownsender_file", type=str, default="LIST_OF_KNOWN_SENDERS", help="CSV-Datei mit Liste der bekannten Absender")
+    parser.add_argument("-cf", "--knownsender_file", type=str, default=ENV_LIST_OF_KNOWN_SENDERS, help="CSV-Datei mit Liste der bekannten Absender")
     parser.add_argument("-mco", "--max_console_output", default=False, action="store_true", help="Maximale Consolen-Ausgabe aktivieren (Default=False)")
     args, unknown = parser.parse_known_args()
 
